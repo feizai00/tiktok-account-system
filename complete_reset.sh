@@ -65,6 +65,14 @@ fi
 
 echo -e "${YELLOW}步骤5: 安装所有依赖${NC}"
 pip install --upgrade pip
+
+# 先安装关键依赖
+pip install Werkzeug==2.0.3
+pip install SQLAlchemy==1.4.46
+pip install Flask==2.0.1
+pip install Flask-SQLAlchemy==2.5.1
+
+# 然后安装其他依赖
 pip install -r requirements.txt
 
 echo -e "${YELLOW}步骤6: 测试应用${NC}"
@@ -87,11 +95,40 @@ directory=$APP_DIR
 command=$APP_DIR/venv/bin/python app.py
 autostart=true
 autorestart=true
-environment=FLASK_APP=app.py,FLASK_ENV=production
+environment=FLASK_APP=app.py,FLASK_ENV=production,PORT=5001
 user=root
 stderr_logfile=$LOG_DIR/error.log
 stdout_logfile=$LOG_DIR/access.log
 EOF
+
+echo -e "${YELLOW}更新Nginx配置...${NC}"
+cat > /etc/nginx/sites-available/tiktok_account_system << EOF
+server {
+    listen 80;
+    server_name _;
+
+    access_log /var/log/nginx/tiktok_access.log;
+    error_log /var/log/nginx/tiktok_error.log;
+
+    location / {
+        proxy_pass http://127.0.0.1:5001;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_connect_timeout 300s;
+        proxy_read_timeout 300s;
+    }
+
+    location /static {
+        alias $APP_DIR/static;
+        expires 30d;
+        add_header Cache-Control "public, max-age=2592000";
+    }
+}
+EOF
+
+ln -sf /etc/nginx/sites-available/tiktok_account_system /etc/nginx/sites-enabled/
 
 echo -e "${YELLOW}步骤9: 重启服务${NC}"
 supervisorctl reread
