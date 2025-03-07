@@ -1,8 +1,10 @@
 # TikTok账号管理系统 (v0.0.2)
 
-这是一个基于Flask的TikTok账号管理系统，用于管理和销售TikTok账号。
+这是一个基于Flask的TikTok账号管理系统，用于管理和销售TikTok账号。系统提供了完整的账号管理、数据统计和财务报表功能，支持传统部署和Docker容器化部署。
 
-当前版本: v0.0.2 (2025年3月8日更新)
+当前版本: v0.0.2-deploy (2025年3月8日更新)
+
+**GitHub仓库**: [https://github.com/feizai00/tiktok-account-system](https://github.com/feizai00/tiktok-account-system)
 
 ## 功能特点
 
@@ -31,21 +33,47 @@
 - 后端：Python, Flask, SQLAlchemy
 - 数据库：SQLite
 
-## 安装与运行
+## 快速安装
 
-1. 安装依赖：
+### 方法1：Linux服务器一键安装
 
 ```bash
+# 下载并运行安装脚本
+curl -sSL https://raw.githubusercontent.com/feizai00/tiktok-account-system/main/install.sh | sudo bash
+```
+
+### 方法2：手动安装
+
+```bash
+# 克隆仓库
+git clone https://github.com/feizai00/tiktok-account-system.git
+cd tiktok-account-system
+
+# 安装依赖
 pip install -r requirements.txt
+
+# 运行应用
+python app.py
 ```
 
-2. 运行应用：
+### 方法3：Docker部署
 
 ```bash
-python run.py
+# 克隆仓库
+git clone https://github.com/feizai00/tiktok-account-system.git
+cd tiktok-account-system
+
+# 使用Docker Compose构建和运行
+docker-compose up -d
 ```
 
-应用将自动启动并在默认浏览器中打开：`http://127.0.0.1:5001`
+应用将在 `http://服务器IP地址` 或本地开发环境的 `http://127.0.0.1:5000` 访问
+
+## 文档
+
+- [部署指南](DEPLOY.md)：详细的部署说明，包括传统部署和Docker部署
+- [更新日志](CHANGELOG.md)：版本历史和功能变更记录
+- [进度报告](PROGRESS.md)：项目开发进度和计划
 
 ## 项目结构
 
