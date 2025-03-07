@@ -53,27 +53,56 @@
 
 **解决方案**：
 
-1. **手动安装依赖**：
+1. **完全重置环境**：
    ```bash
    cd /opt/tiktok-account-system
    source venv/bin/activate
-   pip install Flask==2.0.1 Werkzeug==2.0.3 Jinja2==3.0.3 itsdangerous==2.0.1 click==8.0.4 Flask-SQLAlchemy==2.5.1 matplotlib==3.4.3 pandas==1.3.3 Pillow==8.3.2 openpyxl==3.0.9 XlsxWriter==3.0.2
+   
+   # 卸载所有包
+   pip freeze | xargs pip uninstall -y
+   
+   # 重新安装所有依赖
+   pip install -r requirements.txt
    ```
 
-2. **解决Werkzeug导入错误**：
+2. **手动安装关键依赖**：
    ```bash
-   # 如果遇到 "ImportError: cannot import name 'url_quote' from 'werkzeug.urls'" 错误
-   pip uninstall -y werkzeug
-   pip install werkzeug==2.0.3
+   cd /opt/tiktok-account-system
+   source venv/bin/activate
+   
+   # 先卸载可能冲突的包
+   pip uninstall -y werkzeug sqlalchemy flask-sqlalchemy
+   
+   # 安装指定版本
+   pip install Flask==2.0.1 Werkzeug==2.0.3 Jinja2==3.0.3 itsdangerous==2.0.1 click==8.0.4
+   pip install SQLAlchemy==1.4.46 Flask-SQLAlchemy==2.5.1
+   pip install requests==2.28.2
    ```
 
-3. **检查Python版本**：
+3. **解决常见错误**：
+
+   - **Werkzeug url_quote 错误**：
+     ```bash
+     # 如果遇到 "ImportError: cannot import name 'url_quote' from 'werkzeug.urls'" 错误
+     pip uninstall -y werkzeug
+     pip install werkzeug==2.0.3
+     ```
+   
+   - **SQLAlchemy __all__ 属性错误**：
+     ```bash
+     # 如果遇到 "AttributeError: module 'sqlalchemy' has no attribute '__all__'" 错误
+     pip uninstall -y sqlalchemy flask-sqlalchemy
+     pip install SQLAlchemy==1.4.46
+     pip install Flask-SQLAlchemy==2.5.1
+     ```
+
+4. **检查Python版本**：
    ```bash
    python --version
    # 确保版本为3.6或更高
    ```
 
-4. **更新pip**：
+5. **更新pip**：
    ```bash
    pip install --upgrade pip
    ```

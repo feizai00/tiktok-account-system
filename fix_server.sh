@@ -40,10 +40,16 @@ source venv/bin/activate || { echo -e "${RED}无法激活虚拟环境${NC}"; exi
 
 echo -e "${YELLOW}安装/更新关键依赖...${NC}"
 pip install --upgrade pip
+
+# 先卸载可能冲突的包
+pip uninstall -y werkzeug sqlalchemy flask-sqlalchemy
+
+# 安装指定版本的依赖
 pip install Werkzeug==2.0.3
 pip install Jinja2==3.0.3 itsdangerous==2.0.1 click==8.0.4
+pip install SQLAlchemy==1.4.46 Flask-SQLAlchemy==2.5.1
 pip install requests==2.28.2
-pip install numpy>=1.20.0
+pip install numpy==1.22.4
 
 echo -e "${YELLOW}步骤3: 测试应用${NC}"
 cd $APP_DIR
