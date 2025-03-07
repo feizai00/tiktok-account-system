@@ -86,6 +86,21 @@ source venv/bin/activate
 pip install --upgrade pip
 pip install -r requirements.txt
 
+# 创建测试脚本确保应用可以启动
+echo -e "${YELLOW}测试应用启动...${NC}"
+cat > test_app.py << EOF
+from app import app
+
+if __name__ == "__main__":
+    print("Application test successful!")
+EOF
+
+python test_app.py
+if [ \$? -ne 0 ]; then
+    echo -e "${RED}应用测试失败，请检查日志${NC}"
+    exit 1
+fi
+
 # 配置Supervisor
 echo -e "${YELLOW}正在配置Supervisor...${NC}"
 cat > /etc/supervisor/conf.d/tiktok_account_system.conf << EOF
@@ -94,6 +109,8 @@ directory=$DEPLOY_DIR
 command=$DEPLOY_DIR/venv/bin/python app.py
 autostart=true
 autorestart=true
+environment=FLASK_APP=app.py,FLASK_ENV=production
+user=root
 stderr_logfile=/var/log/tiktok_account_system/error.log
 stdout_logfile=/var/log/tiktok_account_system/access.log
 EOF
@@ -108,14 +125,23 @@ server {
     listen 80;
     server_name _;
 
+    access_log /var/log/nginx/tiktok_access.log;
+    error_log /var/log/nginx/tiktok_error.log;
+
     location / {
         proxy_pass http://127.0.0.1:$APP_PORT;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_connect_timeout 300s;
+        proxy_read_timeout 300s;
     }
 
     location /static {
         alias $DEPLOY_DIR/static;
+        expires 30d;
+        add_header Cache-Control "public, max-age=2592000";
     }
 }
 EOF
@@ -133,7 +159,21 @@ fi
 
 # 重启服务
 echo -e "${YELLOW}正在重启服务...${NC}"
-systemctl restart supervisor
+
+# 确保日志目录有正确权限
+chmod -R 755 /var/log/tiktok_account_system
+
+# 重新加载配置并重启服务
+supervisorctl reread
+supervisorctl update
+supervisorctl restart tiktok_account_system
+
+# 检查应用状态
+echo -e "${YELLOW}检查应用状态...${NC}"
+sleep 5
+supervisorctl status tiktok_account_system
+
+# 重启 Nginx
 systemctl restart nginx
 
 # 配置防火墙
