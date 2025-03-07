@@ -273,7 +273,8 @@ def create_account():
             total_shares=data.get('total_shares', 0),
             total_favorites=data.get('total_favorites', 0),
             region=data.get('region', '未知'),
-            account_type=data.get('account_type', '普通账号')
+            account_type=data.get('account_type', '普通账号'),
+            generation_type=data.get('generation_type', '普通')
         )
         
         # 如果没有提供详细数据，尝试从API获取
@@ -344,6 +345,8 @@ def update_account(account_id):
                 account.region = data['region']
             if 'account_type' in data:
                 account.account_type = data['account_type']
+            if 'generation_type' in data:
+                account.generation_type = data['generation_type']
         
         db.session.commit()
         
@@ -489,74 +492,23 @@ def export_transactions_excel():
     return export_transactions_csv()
 
 def init_sample_data():
-    # 添加示例账号数据
-    for i in range(1, 1235):
-        status = '已售' if i <= 856 else '未售'
-        register_date = datetime.now() - timedelta(days=random.randint(30, 365))
-        regions = ['中国', '美国', '英国', '日本', '韩国', '加拿大', '澳大利亚']
-        showcase = ['有', '无']
-        account_types = ['小账号', '中账号', '大账号', 'VIP账号', '普通账号']
-        
-        account = AccountModel(
-            username=f'tiktok_user_{i}',
-            password=f'password{i}',
-            contact=f'user{i}@example.com' if i % 2 == 0 else f'1{i:010d}',
-            api_password=f'api_key_{i}' if i % 3 == 0 else '',
-            register_date=register_date.date(),
-            register_region=random.choice(regions),
-            has_showcase=random.choice(showcase),
-            followers=10000 + i * 100,
-            likes=50000 + i * 500,
-            status=status,
-            price=100 + i % 100,
-            created_date=datetime.now(),
-            total_views=random.randint(10000, 1000000),
-            total_comments=random.randint(1000, 50000),
-            total_shares=random.randint(500, 20000),
-            total_favorites=random.randint(2000, 100000),
-            region=random.choice(regions),
-            account_type=random.choice(account_types)
-        )
-        db.session.add(account)
-    
-    # 添加示例交易数据
-    for i in range(1, 857):
-        transaction = TransactionModel(
-            order_number=f'ORD-{2023}{i:04d}',
-            account_id=i,
-            amount=100 + i % 100,
-            transaction_date=datetime.now(),
-            status='完成'
-        )
-        db.session.add(transaction)
-    
-    db.session.commit()
+    # 不再创建虚拟数据
+    pass
 
 # 初始化数据库
 with app.app_context():
     # 确保创建所有表和字段
     db.create_all()
     
-    # 如果没有数据，添加一些示例数据
-    if AccountModel.query.count() == 0:
-        init_sample_data()
-    else:
-        # 检查并更新现有账号的新字段
-        accounts = AccountModel.query.all()
-        for account in accounts:
-            if not hasattr(account, 'total_views') or account.total_views is None:
-                account.total_views = random.randint(10000, 1000000)
-            if not hasattr(account, 'total_comments') or account.total_comments is None:
-                account.total_comments = random.randint(1000, 100000)
-            if not hasattr(account, 'total_shares') or account.total_shares is None:
-                account.total_shares = random.randint(500, 50000)
-            if not hasattr(account, 'total_favorites') or account.total_favorites is None:
-                account.total_favorites = random.randint(5000, 500000)
-            if not hasattr(account, 'region') or account.region is None:
-                account.region = random.choice(['中国', '美国', '日本', '韩国', '英国', '其他'])
-            if not hasattr(account, 'account_type') or account.account_type is None:
-                account.account_type = random.choice(['普通账号', '商业账号', '创作者账号', 'VIP账号'])
-        db.session.commit()
+    # 创建数据库表
+    db.create_all()
+    
+    # 检查并更新现有账号的新字段
+    accounts = AccountModel.query.all()
+    for account in accounts:
+        if not hasattr(account, 'generation_type') or account.generation_type is None:
+            account.generation_type = '普通'
+    db.session.commit()
 
 
 

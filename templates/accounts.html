@@ -58,6 +58,7 @@
                             <th>粉丝数</th>
                             <th>点赞数</th>
                             <th>账号类型</th>
+                            <th>辈分</th>
                             <th>地区</th>
                             <th>价格</th>
                             <th>状态</th>
@@ -77,6 +78,7 @@
                             <td>{{ "{:,}".format(account.followers) }}</td>
                             <td>{{ "{:,}".format(account.likes) }}</td>
                             <td>{{ account.account_type }}</td>
+                            <td>{{ account.generation_type }}</td>
                             <td>{{ account.region }}</td>
                             <td>¥{{ "{:,.2f}".format(account.price) }}</td>
                             <td><span class="status-badge {{ account.status }}">{{ account.status }}</span></td>
@@ -205,6 +207,15 @@
                                 <option value="大账号">大账号</option>
                                 <option value="VIP账号">VIP账号</option>
                                 <option value="普通账号">普通账号</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="generation_type">辈分</label>
+                            <select id="generation_type" name="generation_type">
+                                <option value="普通">普通</option>
+                                <option value="一代">一代</option>
+                                <option value="二代">二代</option>
+                                <option value="三代">三代</option>
                             </select>
                         </div>
                     </div>

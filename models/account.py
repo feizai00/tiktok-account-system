@@ -52,6 +52,7 @@ class Account(object):
             total_favorites = db.Column(db.Integer, default=0)
             region = db.Column(db.String(50), default='未知')
             account_type = db.Column(db.String(20), default='普通账号')  # 小账号/中账号/大账号/VIP账号
+            generation_type = db.Column(db.String(20), default='普通')  # 辈分数据：普通/一代/二代/三代
             
             def to_dict(self):
                 return {
@@ -73,7 +74,8 @@ class Account(object):
                     'total_shares': self.total_shares,
                     'total_favorites': self.total_favorites,
                     'region': self.region,
-                    'account_type': self.account_type
+                    'account_type': self.account_type,
+                    'generation_type': self.generation_type
                 }
         
         cls.model = AccountModel
@@ -97,6 +99,7 @@ class Account(object):
         cls.total_favorites = AccountModel.total_favorites
         cls.region = AccountModel.region
         cls.account_type = AccountModel.account_type
+        cls.generation_type = AccountModel.generation_type
         
         return AccountModel
     
