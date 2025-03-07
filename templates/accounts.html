@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>账号管理 - 账号管理系统</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/accounts.css') }}">
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <a href="/">
+                <img src="{{ url_for('static', filename='img/logo.svg') }}" alt="Logo" class="logo-icon">
+                <span>账号管理系统</span>
+            </a>
+        </div>
+        <nav>
+            <ul>
+                <li><a href="/"><img src="{{ url_for('static', filename='img/dashboard.svg') }}" alt="控制台">控制台</a></li>
+                <li><a href="/accounts" class="active"><img src="{{ url_for('static', filename='img/accounts.svg') }}" alt="账号管理">账号管理</a></li>
+                <li><a href="/finance"><img src="{{ url_for('static', filename='img/finance.svg') }}" alt="财务报表">财务报表</a></li>
+            </ul>
+        </nav>
+        <div class="user-info">
+            <a href="#"><img src="{{ url_for('static', filename='img/user.svg') }}" alt="管理员">管理员</a>
+        </div>
+    </header>
+    
+    <main>
+        <div class="container">
+            <div class="toolbar">
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="搜索账号...">
+                </div>
+                <div class="filter-box">
+                    <select id="statusFilter">
+                        <option value="all">全部状态</option>
+                        <option value="未售">未售</option>
+                        <option value="已售">已售</option>
+                    </select>
+                </div>
+                <button id="addAccountBtn" class="btn btn-primary">添加账号</button>
+                <a href="/export-accounts" class="btn btn-secondary">导出数据</a>
+            </div>
+            
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>用户名</th>
+                            <th>密码</th>
+                            <th>号码/邮箱</th>
+                            <th>注册时间</th>
+                            <th>注册地区</th>
+                            <th>橱窗功能</th>
+                            <th>粉丝数</th>
+                            <th>点赞数</th>
+                            <th>账号类型</th>
+                            <th>地区</th>
+                            <th>价格</th>
+                            <th>状态</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for account in accounts %}
+                        <tr class="account-row {{ account.status }}" data-id="{{ account.id }}">
+                            <td>{{ loop.index + (page - 1) * per_page }}</td>
+                            <td>{{ account.username }}</td>
+                            <td>{{ account.password }}</td>
+                            <td>{{ account.contact }}</td>
+                            <td>{{ account.register_date.strftime('%Y-%m-%d') if account.register_date else '' }}</td>
+                            <td>{{ account.register_region }}</td>
+                            <td>{{ account.has_showcase }}</td>
+                            <td>{{ "{:,}".format(account.followers) }}</td>
+                            <td>{{ "{:,}".format(account.likes) }}</td>
+                            <td>{{ account.account_type }}</td>
+                            <td>{{ account.region }}</td>
+                            <td>¥{{ "{:,.2f}".format(account.price) }}</td>
+                            <td><span class="status-badge {{ account.status }}">{{ account.status }}</span></td>
+                            <td class="actions">
+                                <button class="action-btn refresh-btn" data-id="{{ account.id }}">刷新</button>
+                                <button class="action-btn edit-btn" data-id="{{ account.id }}">编辑</button>
+                                <button class="action-btn delete-btn" data-id="{{ account.id }}">删除</button>
+                                {% if account.status == '未售' %}
+                                <button class="action-btn sell-btn" data-id="{{ account.id }}">出售</button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="pagination">
+                <button class="page-btn prev-btn" {% if page == 1 %}disabled{% endif %}>上一页</button>
+                <div class="page-info">
+                    第 <span id="currentPage">{{ page }}</span> 页，共 <span id="totalPages">{{ total_pages }}</span> 页
+                </div>
+                <button class="page-btn next-btn" {% if page == total_pages %}disabled{% endif %}>下一页</button>
+            </div>
+        </div>
+    </main>
+
+    <!-- 添加/编辑账号模态框 -->
+    <div class="modal" id="accountModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">添加账号</h2>
+                <span class="close-btn">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="accountForm">
+                    <input type="hidden" id="accountId">
+                    <div class="form-group">
+                        <label for="username">用户名</label>
+                        <input type="text" id="username" name="username" required>
+                        <small>TikTok账号用户名，必填</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="password">密码</label>
+                        <input type="text" id="password" name="password" required>
+                        <small>账号登录密码，必填</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="contact">号码/邮箱</label>
+                        <input type="text" id="contact" name="contact" required>
+                        <small>账号绑定的手机号码或邮箱，必填</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="api_password">邮箱密码/API密码</label>
+                        <input type="text" id="api_password" name="api_password">
+                        <small>邮箱密码或API访问密码</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="register_date">注册时间</label>
+                        <input type="date" id="register_date" name="register_date">
+                        <small>账号注册日期</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="register_region">注册地区</label>
+                        <input type="text" id="register_region" name="register_region">
+                        <small>账号注册地区</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="has_showcase">橱窗功能</label>
+                        <select id="has_showcase" name="has_showcase">
+                            <option value="有">有</option>
+                            <option value="无">无</option>
+                        </select>
+                        <small>账号是否开通橱窗功能</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <div class="checkbox">
+                            <label>
+                                <input type="checkbox" id="auto_refresh" checked> 自动从 API 获取最新数据
+                            </label>
+                            <small>选中后将使用 API 获取最新账号数据，无需手动输入</small>
+                        </div>
+                    </div>
+                    
+                    <div id="manual-data-fields" style="display: none;">
+                        <div class="form-group">
+                            <label for="followers">粉丝数</label>
+                            <input type="number" id="followers" name="followers">
+                        </div>
+                        <div class="form-group">
+                            <label for="likes">点赞数</label>
+                            <input type="number" id="likes" name="likes">
+                        </div>
+                        <div class="form-group">
+                            <label for="total_views">总播放量</label>
+                            <input type="number" id="total_views" name="total_views">
+                        </div>
+                        <div class="form-group">
+                            <label for="total_comments">总评论数</label>
+                            <input type="number" id="total_comments" name="total_comments">
+                        </div>
+                        <div class="form-group">
+                            <label for="total_shares">总转发数</label>
+                            <input type="number" id="total_shares" name="total_shares">
+                        </div>
+                        <div class="form-group">
+                            <label for="total_favorites">总收藏数</label>
+                            <input type="number" id="total_favorites" name="total_favorites">
+                        </div>
+                        <div class="form-group">
+                            <label for="region">地区</label>
+                            <input type="text" id="region" name="region">
+                        </div>
+                        <div class="form-group">
+                            <label for="account_type">账号类型</label>
+                            <select id="account_type" name="account_type">
+                                <option value="小账号">小账号</option>
+                                <option value="中账号">中账号</option>
+                                <option value="大账号">大账号</option>
+                                <option value="VIP账号">VIP账号</option>
+                                <option value="普通账号">普通账号</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="price">价格</label>
+                        <input type="number" id="price" name="price" step="0.01" required>
+                        <small>账号售价，必填</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="status">状态</label>
+                        <select id="status" name="status">
+                            <option value="未售">未售</option>
+                            <option value="已售">已售</option>
+                        </select>
+                        <small>账号销售状态</small>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" id="cancelBtn">取消</button>
+                        <button type="submit" class="btn btn-primary" id="saveBtn">保存</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 确认删除模态框 -->
+    <div class="modal" id="deleteModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>确认删除</h2>
+                <span class="close-btn">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>确定要删除这个账号吗？此操作不可撤销。</p>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="cancelDeleteBtn">取消</button>
+                    <button type="button" class="btn btn-danger" id="confirmDeleteBtn">确认删除</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 出售账号模态框 -->
+    <div class="modal" id="sellModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>出售账号</h2>
+                <span class="close-btn">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="sellForm">
+                    <input type="hidden" id="sellAccountId">
+                    <div class="form-group">
+                        <label for="sellAmount">出售金额</label>
+                        <input type="number" id="sellAmount" name="sellAmount" step="0.01" required>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" id="cancelSellBtn">取消</button>
+                        <button type="submit" class="btn btn-primary" id="confirmSellBtn">确认出售</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 引入外部JavaScript文件 -->
+    <script src="/static/js/accounts.js"></script>
+</body>
+</html>

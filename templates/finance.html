@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>财务报表 - 账号管理系统</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/finance.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-moment@1.0.1/dist/chartjs-adapter-moment.min.js"></script>
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <a href="/">
+                <img src="{{ url_for('static', filename='img/logo.svg') }}" alt="Logo" class="logo-icon">
+                <span>账号管理系统</span>
+            </a>
+        </div>
+        <nav>
+            <ul>
+                <li><a href="/"><img src="{{ url_for('static', filename='img/dashboard.svg') }}" alt="控制台">控制台</a></li>
+                <li><a href="/accounts"><img src="{{ url_for('static', filename='img/accounts.svg') }}" alt="账号管理">账号管理</a></li>
+                <li><a href="/finance" class="active"><img src="{{ url_for('static', filename='img/finance.svg') }}" alt="财务报表">财务报表</a></li>
+            </ul>
+        </nav>
+        <div class="user-info">
+            <a href="#"><img src="{{ url_for('static', filename='img/user.svg') }}" alt="管理员">管理员</a>
+        </div>
+    </header>
+
+    <main>
+        <div class="finance-container">
+            <div class="finance-header">
+                <h1>财务报表</h1>
+                <div class="date-filter">
+                    <div class="date-range">
+                        <label for="startDate">开始日期:</label>
+                        <input type="date" id="startDate" name="startDate" value="{{ start_date }}">
+                        <label for="endDate">结束日期:</label>
+                        <input type="date" id="endDate" name="endDate" value="{{ end_date }}">
+                        <button id="applyFilter" class="btn btn-primary">应用筛选</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="summary-cards">
+                <div class="summary-card">
+                    <div class="card-icon income-icon">
+                        <img src="{{ url_for('static', filename='img/income.svg') }}" alt="总收入">
+                    </div>
+                    <div class="card-content">
+                        <h3>总收入</h3>
+                        <p class="card-value">¥{{ "{:,.2f}".format(total_income) }}</p>
+                        <p class="card-period">{{ period_text }}</p>
+                    </div>
+                </div>
+                <div class="summary-card">
+                    <div class="card-icon transactions-icon">
+                        <img src="{{ url_for('static', filename='img/transactions.svg') }}" alt="交易数量">
+                    </div>
+                    <div class="card-content">
+                        <h3>交易数量</h3>
+                        <p class="card-value">{{ transaction_count }}</p>
+                        <p class="card-period">{{ period_text }}</p>
+                    </div>
+                </div>
+                <div class="summary-card">
+                    <div class="card-icon average-icon">
+                        <img src="{{ url_for('static', filename='img/average.svg') }}" alt="平均交易金额">
+                    </div>
+                    <div class="card-content">
+                        <h3>平均交易金额</h3>
+                        <p class="card-value">¥{{ "{:,.2f}".format(average_amount) }}</p>
+                        <p class="card-period">{{ period_text }}</p>
+                    </div>
+                </div>
+                <div class="summary-card">
+                    <div class="card-icon profit-icon">
+                        <img src="{{ url_for('static', filename='img/profit.svg') }}" alt="利润率">
+                    </div>
+                    <div class="card-content">
+                        <h3>利润率</h3>
+                        <p class="card-value">{{ "{:.1f}%".format(profit_margin) }}</p>
+                        <p class="card-period">{{ period_text }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="charts-container">
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3>收入趋势</h3>
+                        <div class="chart-controls">
+                            <select id="incomeTrendPeriod">
+                                <option value="daily">按日</option>
+                                <option value="weekly">按周</option>
+                                <option value="monthly" selected>按月</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="chart-body">
+                        <canvas id="incomeTrendChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3>收入来源分布</h3>
+                    </div>
+                    <div class="chart-body">
+                        <canvas id="incomeSourceChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="charts-container">
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3>利润率趋势</h3>
+                    </div>
+                    <div class="chart-body">
+                        <canvas id="profitMarginChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3>ROI分析</h3>
+                    </div>
+                    <div class="chart-body">
+                        <canvas id="roiAnalysisChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="transactions-section">
+                <div class="section-header">
+                    <h3>交易记录</h3>
+                    <div class="export-options">
+                        <button id="exportCSV" class="btn btn-secondary">导出CSV</button>
+                        <button id="exportExcel" class="btn btn-secondary">导出Excel</button>
+                    </div>
+                </div>
+                <div class="transactions-table-container">
+                    <table class="transactions-table">
+                        <thead>
+                            <tr>
+                                <th>订单号</th>
+                                <th>账号</th>
+                                <th>金额</th>
+                                <th>交易日期</th>
+                                <th>状态</th>
+                                <th>利润</th>
+                                <th>ROI</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for transaction in transactions %}
+                            <tr>
+                                <td>{{ transaction.order_number }}</td>
+                                <td>{{ transaction.account.username if transaction.account else '未知账号' }}</td>
+                                <td>¥{{ "{:,.2f}".format(transaction.amount) }}</td>
+                                <td>{{ transaction.transaction_date.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td><span class="status-badge {{ transaction.status }}">{{ transaction.status }}</span></td>
+                                <td>¥{{ "{:,.2f}".format(transaction.profit) }}</td>
+                                <td>{{ "{:.1f}%".format(transaction.roi) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="pagination">
+                    <button class="page-btn prev-btn" {% if page == 1 %}disabled{% endif %}>上一页</button>
+                    <div class="page-info">
+                        第 <span id="currentPage">{{ page }}</span> 页，共 <span id="totalPages">{{ total_pages }}</span> 页
+                    </div>
+                    <button class="page-btn next-btn" {% if page == total_pages %}disabled{% endif %}>下一页</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // 日期筛选功能
+        document.getElementById('applyFilter').addEventListener('click', () => {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            window.location.href = `/finance?start_date=${startDate}&end_date=${endDate}`;
+        });
+
+        // 收入趋势图表
+        const incomeTrendCtx = document.getElementById('incomeTrendChart').getContext('2d');
+        const incomeTrendChart = new Chart(incomeTrendCtx, {
+            type: 'line',
+            data: {
+                datasets: [{
+                    label: '收入',
+                    data: {{ income_trend_data|tojson }},
+                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 2,
+                    tension: 0.3,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        type: 'time',
+                        time: {
+                            unit: 'month',
+                            displayFormats: {
+                                day: 'MM-DD',
+                                week: 'MM-DD',
+                                month: 'YYYY-MM'
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: '日期'
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: '收入 (¥)'
+                        }
+                    }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.y !== null) {
+                                    label += new Intl.NumberFormat('zh-CN', { style: 'currency', currency: 'CNY' }).format(context.parsed.y);
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // 收入来源分布图表
+        const incomeSourceCtx = document.getElementById('incomeSourceChart').getContext('2d');
+        const incomeSourceChart = new Chart(incomeSourceCtx, {
+            type: 'pie',
+            data: {
+                labels: {{ income_source_labels|tojson }},
+                datasets: [{
+                    data: {{ income_source_data|tojson }},
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.7)',
+                        'rgba(54, 162, 235, 0.7)',
+                        'rgba(255, 206, 86, 0.7)',
+                        'rgba(75, 192, 192, 0.7)',
+                        'rgba(153, 102, 255, 0.7)',
+                        'rgba(255, 159, 64, 0.7)'
+                    ],
+                    borderColor: [
+                        'rgba(255, 99, 132, 1)',
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(255, 206, 86, 1)',
+                        'rgba(75, 192, 192, 1)',
+                        'rgba(153, 102, 255, 1)',
+                        'rgba(255, 159, 64, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.raw;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = Math.round((value / total) * 100);
+                                return `${label}: ${new Intl.NumberFormat('zh-CN', { style: 'currency', currency: 'CNY' }).format(value)} (${percentage}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // 利润率趋势图表
+        const profitMarginCtx = document.getElementById('profitMarginChart').getContext('2d');
+        const profitMarginChart = new Chart(profitMarginCtx, {
+            type: 'line',
+            data: {
+                datasets: [{
+                    label: '利润率',
+                    data: {{ profit_margin_data|tojson }},
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 2,
+                    tension: 0.3,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        type: 'time',
+                        time: {
+                            unit: 'month',
+                            displayFormats: {
+                                day: 'MM-DD',
+                                week: 'MM-DD',
+                                month: 'YYYY-MM'
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: '日期'
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: '利润率 (%)'
+                        },
+                        ticks: {
+                            callback: function(value) {
+                                return value + '%';
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.y !== null) {
+                                    label += context.parsed.y.toFixed(1) + '%';
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // ROI分析图表
+        const roiAnalysisCtx = document.getElementById('roiAnalysisChart').getContext('2d');
+        const roiAnalysisChart = new Chart(roiAnalysisCtx, {
+            type: 'bar',
+            data: {
+                labels: {{ roi_analysis_labels|tojson }},
+                datasets: [{
+                    label: 'ROI',
+                    data: {{ roi_analysis_data|tojson }},
+                    backgroundColor: 'rgba(153, 102, 255, 0.7)',
+                    borderColor: 'rgba(153, 102, 255, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'ROI (%)'
+                        },
+                        ticks: {
+                            callback: function(value) {
+                                return value + '%';
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.y !== null) {
+                                    label += context.parsed.y.toFixed(1) + '%';
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // 收入趋势周期切换
+        document.getElementById('incomeTrendPeriod').addEventListener('change', function() {
+            const period = this.value;
+            let unit = 'month';
+            
+            switch(period) {
+                case 'daily':
+                    unit = 'day';
+                    break;
+                case 'weekly':
+                    unit = 'week';
+                    break;
+                case 'monthly':
+                    unit = 'month';
+                    break;
+            }
+            
+            incomeTrendChart.options.scales.x.time.unit = unit;
+            incomeTrendChart.update();
+        });
+
+        // 分页功能
+        const prevBtn = document.querySelector('.prev-btn');
+        const nextBtn = document.querySelector('.next-btn');
+        const currentPage = document.getElementById('currentPage');
+        
+        prevBtn.addEventListener('click', () => {
+            if (!prevBtn.disabled) {
+                const startDate = document.getElementById('startDate').value;
+                const endDate = document.getElementById('endDate').value;
+                window.location.href = `/finance?page=${parseInt(currentPage.textContent) - 1}&start_date=${startDate}&end_date=${endDate}`;
+            }
+        });
+        
+        nextBtn.addEventListener('click', () => {
+            if (!nextBtn.disabled) {
+                const startDate = document.getElementById('startDate').value;
+                const endDate = document.getElementById('endDate').value;
+                window.location.href = `/finance?page=${parseInt(currentPage.textContent) + 1}&start_date=${startDate}&end_date=${endDate}`;
+            }
+        });
+
+        // 导出功能
+        document.getElementById('exportCSV').addEventListener('click', () => {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            window.location.href = `/api/export/transactions/csv?start_date=${startDate}&end_date=${endDate}`;
+        });
+        
+        document.getElementById('exportExcel').addEventListener('click', () => {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            window.location.href = `/api/export/transactions/excel?start_date=${startDate}&end_date=${endDate}`;
+        });
+    </script>
+</body>
+</html>

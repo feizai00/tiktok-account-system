@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>账号管理系统</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <a href="/">
+                <img src="{{ url_for('static', filename='img/logo.svg') }}" alt="Logo" class="logo-icon">
+                <span>账号管理系统</span>
+            </a>
+        </div>
+        <nav>
+            <ul>
+                <li><a href="/" class="active"><img src="{{ url_for('static', filename='img/dashboard.svg') }}" alt="控制台">控制台</a></li>
+                <li><a href="/accounts"><img src="{{ url_for('static', filename='img/accounts.svg') }}" alt="账号管理">账号管理</a></li>
+                <li><a href="/finance"><img src="{{ url_for('static', filename='img/finance.svg') }}" alt="财务报表">财务报表</a></li>
+            </ul>
+        </nav>
+        <div class="user-info">
+            <a href="#"><img src="{{ url_for('static', filename='img/user.svg') }}" alt="管理员">管理员</a>
+        </div>
+    </header>
+
+    <main>
+        <div class="dashboard">
+            <!-- 数据卡片 -->
+            <div class="stats-cards">
+                <div class="card">
+                    <div class="card-title">账号总数</div>
+                    <div class="card-value">{{ total_accounts }}</div>
+                    <div class="card-trend up">较上月增长 8%</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">已售账号</div>
+                    <div class="card-value">{{ sold_accounts }}</div>
+                    <div class="card-trend up">较上月增长 12%</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">本月收入</div>
+                    <div class="card-value">¥{{ "{:,.0f}".format(monthly_income) }}</div>
+                    <div class="card-trend down">较上月下降 5%</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">账号转化率</div>
+                    <div class="card-value">{{ "{:.1f}%".format(conversion_rate) }}</div>
+                    <div class="card-trend up">较上月增长 2%</div>
+                </div>
+            </div>
+
+            <!-- 图表区域 -->
+            <div class="charts-container">
+                <div class="chart-card">
+                    <div class="chart-title">账号销售趋势</div>
+                    <div class="chart-container">
+                        <canvas id="salesTrendChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-title">月度收入统计</div>
+                    <div class="chart-container">
+                        <canvas id="monthlyIncomeChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 账号地区分布和其他统计图表 -->
+            <div class="charts-container">
+                <div class="chart-card">
+                    <div class="chart-title">账号地区分布</div>
+                    <div class="chart-container">
+                        <canvas id="regionDistributionChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-title">账号类型统计</div>
+                    <div class="chart-container">
+                        <canvas id="accountTypeChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 交易记录表格 -->
+            <div class="transactions-card">
+                <div class="card-title">最近交易记录</div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>订单号</th>
+                                <th>账号类型</th>
+                                <th>交易金额</th>
+                                <th>交易时间</th>
+                                <th>状态</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for transaction in recent_transactions %}
+                            <tr>
+                                <td>{{ transaction.order_number }}</td>
+                                <td>{{ transaction.account.username if transaction.account else '未知账号' }}</td>
+                                <td>¥{{ "{:,.2f}".format(transaction.amount) }}</td>
+                                <td>{{ transaction.transaction_date.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td>{{ transaction.status }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // 销售趋势图表
+        const salesTrendCtx = document.getElementById('salesTrendChart').getContext('2d');
+        const salesTrendChart = new Chart(salesTrendCtx, {
+            type: 'line',
+            data: {
+                labels: {{ sales_trend.keys() | list | tojson }},
+                datasets: [{
+                    label: '账号销售数量',
+                    data: {{ sales_trend.values() | list | tojson }},
+                    borderColor: 'rgba(75, 100, 192, 1)',
+                    backgroundColor: 'rgba(75, 100, 192, 0.1)',
+                    borderWidth: 2,
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(200, 200, 200, 0.1)'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+
+        // 月度收入统计图表
+        const monthlyIncomeCtx = document.getElementById('monthlyIncomeChart').getContext('2d');
+        const monthlyIncomeChart = new Chart(monthlyIncomeCtx, {
+            type: 'bar',
+            data: {
+                labels: {{ monthly_income_stats.keys() | list | tojson }},
+                datasets: [{
+                    label: '月度收入',
+                    data: {{ monthly_income_stats.values() | list | tojson }},
+                    backgroundColor: 'rgba(54, 162, 235, 0.8)',
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(200, 200, 200, 0.1)'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+        
+        // 账号地区分布图表
+        const regionDistributionCtx = document.getElementById('regionDistributionChart').getContext('2d');
+        const regionDistributionChart = new Chart(regionDistributionCtx, {
+            type: 'doughnut',
+            data: {
+                labels: {{ region_distribution.keys() | list | tojson }},
+                datasets: [{
+                    label: '账号地区分布',
+                    data: {{ region_distribution.values() | list | tojson }},
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.7)',
+                        'rgba(54, 162, 235, 0.7)',
+                        'rgba(255, 206, 86, 0.7)',
+                        'rgba(75, 192, 192, 0.7)',
+                        'rgba(153, 102, 255, 0.7)',
+                        'rgba(255, 159, 64, 0.7)',
+                        'rgba(199, 199, 199, 0.7)',
+                        'rgba(83, 102, 255, 0.7)'
+                    ],
+                    borderColor: [
+                        'rgba(255, 99, 132, 1)',
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(255, 206, 86, 1)',
+                        'rgba(75, 192, 192, 1)',
+                        'rgba(153, 102, 255, 1)',
+                        'rgba(255, 159, 64, 1)',
+                        'rgba(199, 199, 199, 1)',
+                        'rgba(83, 102, 255, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.raw || 0;
+                                const total = context.dataset.data.reduce((acc, curr) => acc + curr, 0);
+                                const percentage = Math.round((value / total) * 100);
+                                return `${label}: ${value} 个账号 (${percentage}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+        // 账号类型统计图表
+        const accountTypeCtx = document.getElementById('accountTypeChart').getContext('2d');
+        const accountTypeChart = new Chart(accountTypeCtx, {
+            type: 'bar',
+            data: {
+                labels: ['小账号', '中账号', '大账号', 'VIP账号'],
+                datasets: [{
+                    label: '账号数量',
+                    data: [45, 30, 15, 10],
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.7)',
+                        'rgba(54, 162, 235, 0.7)',
+                        'rgba(255, 206, 86, 0.7)',
+                        'rgba(75, 192, 192, 0.7)'
+                    ],
+                    borderColor: [
+                        'rgba(255, 99, 132, 1)',
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(255, 206, 86, 1)',
+                        'rgba(75, 192, 192, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(200, 200, 200, 0.1)'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
