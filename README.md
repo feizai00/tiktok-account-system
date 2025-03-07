@@ -72,6 +72,7 @@ docker-compose up -d
 ## 文档
 
 - [部署指南](DEPLOY.md)：详细的部署说明，包括传统部署和Docker部署
+- [故障排除](troubleshooting.md)：常见问题和解决方案
 - [更新日志](CHANGELOG.md)：版本历史和功能变更记录
 - [进度报告](PROGRESS.md)：项目开发进度和计划
 
