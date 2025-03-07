@@ -49,6 +49,7 @@
 - requirements.txt中包含不存在的包
 - 网络连接问题
 - Python版本不兼容
+- 依赖包版本冲突
 
 **解决方案**：
 
@@ -56,16 +57,23 @@
    ```bash
    cd /opt/tiktok-account-system
    source venv/bin/activate
-   pip install Flask==2.0.1 Flask-SQLAlchemy==2.5.1 matplotlib==3.4.3 pandas==1.3.3 Pillow==8.3.2 openpyxl==3.0.9 XlsxWriter==3.0.2
+   pip install Flask==2.0.1 Werkzeug==2.0.3 Jinja2==3.0.3 itsdangerous==2.0.1 click==8.0.4 Flask-SQLAlchemy==2.5.1 matplotlib==3.4.3 pandas==1.3.3 Pillow==8.3.2 openpyxl==3.0.9 XlsxWriter==3.0.2
    ```
 
-2. **检查Python版本**：
+2. **解决Werkzeug导入错误**：
+   ```bash
+   # 如果遇到 "ImportError: cannot import name 'url_quote' from 'werkzeug.urls'" 错误
+   pip uninstall -y werkzeug
+   pip install werkzeug==2.0.3
+   ```
+
+3. **检查Python版本**：
    ```bash
    python --version
    # 确保版本为3.6或更高
    ```
 
-3. **更新pip**：
+4. **更新pip**：
    ```bash
    pip install --upgrade pip
    ```
