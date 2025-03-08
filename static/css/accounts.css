@@ -140,6 +140,13 @@ main {
     text-overflow: ellipsis;
 }
 
+.data-table td.actions {
+    white-space: nowrap;
+    overflow: visible;
+    text-overflow: clip;
+    padding: 5px;
+}
+
 .data-table th {
     font-weight: 600;
     color: #444;
@@ -151,19 +158,19 @@ main {
 
 /* 设置列宽 */
 .data-table th:nth-child(1) { width: 3%; }  /* # */
-.data-table th:nth-child(2) { width: 9%; }  /* 用户名 */
-.data-table th:nth-child(3) { width: 9%; }  /* 密码 */
-.data-table th:nth-child(4) { width: 9%; }  /* 号码/邮箱 */
-.data-table th:nth-child(5) { width: 7%; }  /* 注册时间 */
-.data-table th:nth-child(6) { width: 7%; }  /* 注册地区 */
-.data-table th:nth-child(7) { width: 6%; }  /* 橱窗功能 */
-.data-table th:nth-child(8) { width: 7%; }  /* 粉丝数 */
-.data-table th:nth-child(9) { width: 7%; }  /* 点赞数 */
-.data-table th:nth-child(10) { width: 7%; } /* 账号类型 */
-.data-table th:nth-child(11) { width: 6%; } /* 地区 */
-.data-table th:nth-child(12) { width: 6%; } /* 价格 */
-.data-table th:nth-child(13) { width: 6%; } /* 状态 */
-.data-table th:nth-child(14) { width: 18%; } /* 操作 */
+.data-table th:nth-child(2) { width: 7%; }  /* 用户名 */
+.data-table th:nth-child(3) { width: 7%; }  /* 密码 */
+.data-table th:nth-child(4) { width: 7%; }  /* 号码/邮箱 */
+.data-table th:nth-child(5) { width: 6%; }  /* 注册时间 */
+.data-table th:nth-child(6) { width: 6%; }  /* 注册地区 */
+.data-table th:nth-child(7) { width: 5%; }  /* 橱窗功能 */
+.data-table th:nth-child(8) { width: 6%; }  /* 粉丝数 */
+.data-table th:nth-child(9) { width: 6%; }  /* 点赞数 */
+.data-table th:nth-child(10) { width: 6%; } /* 账号类型 */
+.data-table th:nth-child(11) { width: 5%; } /* 地区 */
+.data-table th:nth-child(12) { width: 5%; } /* 价格 */
+.data-table th:nth-child(13) { width: 5%; } /* 状态 */
+.data-table th:nth-child(15) { width: 30%; } /* 操作 */
 
 .data-table td {
     border-bottom: 1px solid #eee;
@@ -198,15 +205,30 @@ main {
 
 /* 操作按钮样式 */
 .action-btn {
-    padding: 5px 8px;
-    border-radius: 5px;
-    font-size: 12px;
+    padding: 3px 5px;
+    border-radius: 3px;
+    font-size: 11px;
     cursor: pointer;
     border: none;
-    margin-right: 4px;
     transition: all 0.2s ease;
     font-weight: 500;
     white-space: nowrap;
+    display: inline-block;
+    min-width: 35px;
+    text-align: center;
+    margin: 2px;
+}
+
+
+.view-btn {
+    background-color: #e6f4ea;
+    color: #137333;
+}
+
+.view-btn:hover {
+    background-color: #ceead6;
+    transform: translateY(-2px);
+    box-shadow: 0 2px 5px rgba(19, 115, 51, 0.15);
 }
 
 .refresh-btn {
@@ -242,14 +264,42 @@ main {
 }
 
 .sell-btn {
-    background-color: #e6f4ea;
-    color: #137333;
+    background-color: #fff8e1;
+    color: #f9a825;
 }
 
 .sell-btn:hover {
-    background-color: #ceead6;
+    background-color: #ffecb3;
     transform: translateY(-2px);
-    box-shadow: 0 2px 5px rgba(19, 115, 51, 0.15);
+    box-shadow: 0 2px 5px rgba(249, 168, 37, 0.15);
+}
+
+
+
+.sell-btn {
+    background-color: #fff8e1;
+    color: #f9a825;
+}
+
+.sell-btn:hover {
+    background-color: #ffecb3;
+    transform: translateY(-2px);
+    box-shadow: 0 2px 5px rgba(249, 168, 37, 0.15);
+}
+
+/* 确保操作列有足够的空间 */
+.actions {
+    min-width: 280px;
+    white-space: nowrap;
+    padding: 5px !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+}
+
+.action-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
 }
 
 /* 分页样式 */

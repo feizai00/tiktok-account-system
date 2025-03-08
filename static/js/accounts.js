@@ -44,11 +44,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 accountModal.style.display = 'none';
                 deleteModal.style.display = 'none';
                 sellModal.style.display = 'none';
+                // 重置表单状态
+                resetFormState();
             });
         });
         
         cancelBtn.addEventListener('click', () => {
             accountModal.style.display = 'none';
+            // 重置表单状态
+            resetFormState();
         });
         
         cancelDeleteBtn.addEventListener('click', () => {
@@ -120,6 +124,95 @@ document.addEventListener('DOMContentLoaded', function() {
      * 绑定所有事件
      */
     function bindEvents() {
+        console.log('Binding events to buttons');
+        // 点击查看按钮
+        document.querySelectorAll('.view-btn').forEach(btn => {
+            console.log('Found view button:', btn);
+            btn.addEventListener('click', (e) => {
+                const id = e.target.getAttribute('data-id');
+                modalTitle.textContent = '查看账号';
+                
+                // 发送请求获取账号详情
+                fetch(`/api/accounts/${id}`)
+                    .then(response => response.json())
+                    .then(account => {
+                        accountId.value = id;
+                        document.getElementById('username').value = account.username;
+                        document.getElementById('price').value = account.price;
+                        document.getElementById('status').value = account.status;
+                        
+                        // 填充必填的新字段
+                        if (document.getElementById('password')) {
+                            document.getElementById('password').value = account.password || '';
+                        }
+                        if (document.getElementById('contact')) {
+                            document.getElementById('contact').value = account.contact || '';
+                        }
+                        
+                        // 填充可选的新字段
+                        if (document.getElementById('api_password')) {
+                            document.getElementById('api_password').value = account.api_password || '';
+                        }
+                        if (document.getElementById('register_date')) {
+                            document.getElementById('register_date').value = account.register_date || '';
+                        }
+                        if (document.getElementById('register_region')) {
+                            document.getElementById('register_region').value = account.register_region || '';
+                        }
+                        if (document.getElementById('has_showcase')) {
+                            document.getElementById('has_showcase').value = account.has_showcase || '无';
+                        }
+                        
+                        // 填充API自动获取的字段
+                        if (document.getElementById('total_views')) {
+                            document.getElementById('total_views').value = account.total_views || 0;
+                        }
+                        if (document.getElementById('total_comments')) {
+                            document.getElementById('total_comments').value = account.total_comments || 0;
+                        }
+                        if (document.getElementById('total_shares')) {
+                            document.getElementById('total_shares').value = account.total_shares || 0;
+                        }
+                        if (document.getElementById('total_favorites')) {
+                            document.getElementById('total_favorites').value = account.total_favorites || 0;
+                        }
+                        if (document.getElementById('region')) {
+                            document.getElementById('region').value = account.region || '未知';
+                        }
+                        if (document.getElementById('account_type')) {
+                            document.getElementById('account_type').value = account.account_type || '白号';
+                        }
+                        if (document.getElementById('followers')) {
+                            document.getElementById('followers').value = account.followers || 0;
+                        }
+                        if (document.getElementById('likes')) {
+                            document.getElementById('likes').value = account.likes || 0;
+                        }
+                        
+                        // 设置所有字段为只读
+                        const formInputs = accountForm.querySelectorAll('input, select');
+                        formInputs.forEach(input => {
+                            input.setAttribute('readonly', true);
+                            if (input.tagName === 'SELECT') {
+                                input.setAttribute('disabled', true);
+                            }
+                        });
+                        
+                        // 隐藏保存按钮，只显示取消按钮
+                        document.getElementById('saveBtn').style.display = 'none';
+                        
+                        accountModal.style.display = 'block';
+                        // 显示所有数据字段
+                        document.getElementById('auto_refresh').checked = false;
+                        toggleDataFieldsEditable();
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('获取账号数据失败，请重试');
+                    });
+            });
+        });
+        
         // 点击编辑按钮
         document.querySelectorAll('.edit-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -174,7 +267,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             document.getElementById('region').value = account.region || '未知';
                         }
                         if (document.getElementById('account_type')) {
-                            document.getElementById('account_type').value = account.account_type || '普通账号';
+                            document.getElementById('account_type').value = account.account_type || '白号';
                         }
                         
                         accountModal.style.display = 'block';
@@ -362,6 +455,14 @@ document.addEventListener('DOMContentLoaded', function() {
             formData.has_showcase = document.getElementById('has_showcase').value;
         }
         
+        // 添加账号类型和辈分字段，这些字段不受自动刷新影响
+        if (document.getElementById('account_type')) {
+            formData.account_type = document.getElementById('account_type').value;
+        }
+        if (document.getElementById('generation_type')) {
+            formData.generation_type = document.getElementById('generation_type').value;
+        }
+        
         // 如果没有选择自动刷新，添加所有字段
         if (!autoRefresh) {
             formData.followers = parseInt(document.getElementById('followers').value);
@@ -382,9 +483,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             if (document.getElementById('region')) {
                 formData.region = document.getElementById('region').value;
-            }
-            if (document.getElementById('account_type')) {
-                formData.account_type = document.getElementById('account_type').value;
             }
         }
         
@@ -424,6 +522,25 @@ document.addEventListener('DOMContentLoaded', function() {
         // 否则显示手动数据字段
         if (manualDataFields) {
             manualDataFields.style.display = autoRefresh ? 'none' : 'block';
+        }
+    }
+    
+    /**
+     * 重置表单状态
+     */
+    function resetFormState() {
+        // 移除所有只读属性
+        const formInputs = accountForm.querySelectorAll('input, select');
+        formInputs.forEach(input => {
+            input.removeAttribute('readonly');
+            if (input.tagName === 'SELECT') {
+                input.removeAttribute('disabled');
+            }
+        });
+        
+        // 显示保存按钮
+        if (document.getElementById('saveBtn')) {
+            document.getElementById('saveBtn').style.display = 'inline-block';
         }
     }
 });

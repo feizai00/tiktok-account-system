@@ -83,12 +83,15 @@
                             <td>¥{{ "{:,.2f}".format(account.price) }}</td>
                             <td><span class="status-badge {{ account.status }}">{{ account.status }}</span></td>
                             <td class="actions">
-                                <button class="action-btn refresh-btn" data-id="{{ account.id }}">刷新</button>
-                                <button class="action-btn edit-btn" data-id="{{ account.id }}">编辑</button>
-                                <button class="action-btn delete-btn" data-id="{{ account.id }}">删除</button>
-                                {% if account.status == '未售' %}
-                                <button class="action-btn sell-btn" data-id="{{ account.id }}">出售</button>
-                                {% endif %}
+                                <div class="action-buttons">
+                                    <button class="action-btn view-btn" data-id="{{ account.id }}">查看</button>
+                                    <button class="action-btn refresh-btn" data-id="{{ account.id }}">刷新</button>
+                                    <button class="action-btn edit-btn" data-id="{{ account.id }}">编辑</button>
+                                    <button class="action-btn delete-btn" data-id="{{ account.id }}">删除</button>
+                                    {% if account.status == '未售' %}
+                                    <button class="action-btn sell-btn" data-id="{{ account.id }}">出售</button>
+                                    {% endif %}
+                                </div>
                             </td>
                         </tr>
                         {% endfor %}
@@ -162,6 +165,30 @@
                     </div>
                     
                     <div class="form-group">
+                        <label for="account_type">账号类型</label>
+                        <select id="account_type" name="account_type">
+                            <option value="白号">白号</option>
+                            <option value="满月白号">满月白号</option>
+                            <option value="橱窗号">橱窗号</option>
+                            <option value="报白号">报白号</option>
+                            <option value="机刷号">机刷号</option>
+                            <option value="自然流号">自然流号</option>
+                        </select>
+                        <small>账号类型，必选</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="generation_type">辈分</label>
+                        <select id="generation_type" name="generation_type">
+                            <option value="普通">普通</option>
+                            <option value="一代">一代</option>
+                            <option value="二代">二代</option>
+                            <option value="三代">三代</option>
+                        </select>
+                        <small>账号辈分，必选</small>
+                    </div>
+                    
+                    <div class="form-group">
                         <div class="checkbox">
                             <label>
                                 <input type="checkbox" id="auto_refresh" checked> 自动从 API 获取最新数据
@@ -199,25 +226,7 @@
                             <label for="region">地区</label>
                             <input type="text" id="region" name="region">
                         </div>
-                        <div class="form-group">
-                            <label for="account_type">账号类型</label>
-                            <select id="account_type" name="account_type">
-                                <option value="小账号">小账号</option>
-                                <option value="中账号">中账号</option>
-                                <option value="大账号">大账号</option>
-                                <option value="VIP账号">VIP账号</option>
-                                <option value="普通账号">普通账号</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="generation_type">辈分</label>
-                            <select id="generation_type" name="generation_type">
-                                <option value="普通">普通</option>
-                                <option value="一代">一代</option>
-                                <option value="二代">二代</option>
-                                <option value="三代">三代</option>
-                            </select>
-                        </div>
+
                     </div>
                     <div class="form-group">
                         <label for="price">价格</label>
