@@ -1,3 +1,42 @@
+#!/bin/bash
+# 服务器上修复账号管理页面按钮显示问题的脚本
+
+# 颜色定义
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # 恢复默认颜色
+
+echo -e "${BLUE}================================================${NC}"
+echo -e "${BLUE}    服务器修复账号管理页面按钮显示问题    ${NC}"
+echo -e "${BLUE}================================================${NC}"
+
+# 检查是否为root用户
+if [ "$(id -u)" != "0" ]; then
+   echo -e "${RED}错误: 此脚本必须以root用户身份运行${NC}" 
+   echo -e "${YELLOW}请使用 sudo ./fix_server_buttons.sh 运行此脚本${NC}"
+   exit 1
+fi
+
+# 设置应用目录
+APP_DIR="/opt/tiktok-account-system"
+BACKUP_DIR="/opt/backups/$(date +%Y%m%d_%H%M%S)"
+
+# 创建备份目录
+mkdir -p $BACKUP_DIR
+echo -e "${YELLOW}创建备份目录: $BACKUP_DIR${NC}"
+
+# 备份当前文件
+echo -e "${YELLOW}步骤1: 备份当前文件${NC}"
+cp -f $APP_DIR/templates/accounts.html $BACKUP_DIR/ 2>/dev/null || echo "accounts.html 不存在，跳过备份"
+cp -f $APP_DIR/static/css/accounts.css $BACKUP_DIR/ 2>/dev/null || echo "accounts.css 不存在，跳过备份"
+
+# 修复CSS文件
+echo -e "${YELLOW}步骤2: 创建修复后的accounts.css文件${NC}"
+mkdir -p $APP_DIR/static/css
+
+cat > $APP_DIR/static/css/accounts.css << 'EOF'
 /* 账号管理页面特有样式 */
 
 /* 主内容区域样式 */
@@ -326,148 +365,67 @@ main {
     font-size: 14px;
     color: #555;
 }
+EOF
 
-/* 模态框样式 */
-.modal {
-    display: none;
-    position: fixed;
-    z-index: 1000;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
-    overflow: auto;
-}
+# 确保HTML文件中的操作按钮结构正确
+echo -e "${YELLOW}步骤3: 检查HTML文件中的操作按钮结构${NC}"
+mkdir -p $APP_DIR/templates
 
-.modal-content {
-    background-color: #fff;
-    margin: 5% auto;
-    border-radius: 10px;
-    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
-    width: 90%;
-    max-width: 700px;
-    animation: modalFadeIn 0.3s;
-}
+# 检查HTML文件是否存在
+if [ -f "$APP_DIR/templates/accounts.html" ]; then
+    # 检查是否包含action-buttons类
+    if ! grep -q "class=\"action-buttons\"" "$APP_DIR/templates/accounts.html"; then
+        echo -e "${YELLOW}修复HTML中的操作按钮结构...${NC}"
+        # 创建临时文件
+        TMP_FILE=$(mktemp)
+        
+        # 使用sed修复HTML结构
+        sed 's/<td class="actions">/<td class="actions">\n                                <div class="action-buttons">/' "$APP_DIR/templates/accounts.html" > $TMP_FILE
+        sed -i 's/<\/button>\n                                    {% if account.status/\n                                    {% if account.status/' $TMP_FILE
+        sed -i 's/{% endif %}\n                            <\/td>/{% endif %}\n                                <\/div>\n                            <\/td>/' $TMP_FILE
+        
+        # 将修复后的内容移回原文件
+        mv $TMP_FILE "$APP_DIR/templates/accounts.html"
+    else
+        echo -e "${GREEN}HTML文件中的操作按钮结构已正确${NC}"
+    fi
+else
+    echo -e "${RED}HTML文件不存在: $APP_DIR/templates/accounts.html${NC}"
+fi
 
-@keyframes modalFadeIn {
-    from {opacity: 0; transform: translateY(-50px);}
-    to {opacity: 1; transform: translateY(0);}
-}
+# 修复Nginx配置
+echo -e "${YELLOW}步骤4: 修复Nginx配置${NC}"
+NGINX_CONFIG="/etc/nginx/sites-available/tiktok_account_system"
 
-.modal-header {
-    padding: 20px 25px;
-    border-bottom: 1px solid #eee;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.modal-header h2 {
-    margin: 0;
-    font-size: 20px;
-    color: #333;
-}
-
-.close-btn {
-    font-size: 24px;
-    font-weight: bold;
-    color: #aaa;
-    cursor: pointer;
-    transition: color 0.2s;
-}
-
-.close-btn:hover {
-    color: #333;
-}
-
-.modal-body {
-    padding: 25px;
-    max-height: 70vh;
-    overflow-y: auto;
-}
-
-.form-group {
-    margin-bottom: 20px;
-}
-
-.form-group label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: 500;
-    color: #333;
-}
-
-.form-group input,
-.form-group select,
-.form-group textarea {
-    width: 100%;
-    padding: 12px 15px;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    font-size: 14px;
-    background-color: #f9f9f9;
-    transition: all 0.3s ease;
-}
-
-.form-group input:focus,
-.form-group select:focus,
-.form-group textarea:focus {
-    outline: none;
-    border-color: #1a73e8;
-    box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
-    background-color: #fff;
-}
-
-.form-group small {
-    display: block;
-    margin-top: 5px;
-    font-size: 12px;
-    color: #777;
-}
-
-.form-group .checkbox {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.form-group .checkbox input {
-    width: auto;
-}
-
-.modal-footer {
-    padding: 15px 25px;
-    border-top: 1px solid #eee;
-    display: flex;
-    justify-content: flex-end;
-    gap: 15px;
-}
-
-/* 响应式设计 */
-@media (max-width: 768px) {
-    header {
-        flex-direction: column;
-        padding: 15px;
-        gap: 15px;
-    }
+# 检查Nginx配置文件是否存在
+if [ -f "$NGINX_CONFIG" ]; then
+    # 备份Nginx配置
+    cp $NGINX_CONFIG ${NGINX_CONFIG}.bak
     
-    nav ul {
-        flex-direction: column;
-        gap: 10px;
-    }
+    # 修改Nginx配置中的端口
+    sed -i 's/proxy_pass http:\/\/127.0.0.1:5000;/proxy_pass http:\/\/127.0.0.1:5001;/g' $NGINX_CONFIG
     
-    .toolbar {
-        flex-direction: column;
-        align-items: stretch;
-    }
+    # 测试Nginx配置
+    nginx -t
     
-    .search-box {
-        max-width: none;
-    }
-    
-    .modal-content {
-        width: 95%;
-        margin: 10% auto;
-    }
-}
+    if [ $? -eq 0 ]; then
+        echo -e "${GREEN}Nginx配置测试成功${NC}"
+        # 重启Nginx
+        systemctl restart nginx
+    else
+        echo -e "${RED}Nginx配置测试失败，恢复备份${NC}"
+        cp ${NGINX_CONFIG}.bak $NGINX_CONFIG
+    fi
+else
+    echo -e "${RED}Nginx配置文件不存在: $NGINX_CONFIG${NC}"
+fi
+
+# 重启应用
+echo -e "${YELLOW}步骤5: 重启应用${NC}"
+supervisorctl restart tiktok_account_system
+
+# 清除浏览器缓存提示
+echo -e "${YELLOW}步骤6: 完成${NC}"
+echo -e "${GREEN}修复已完成!${NC}"
+echo -e "${YELLOW}请在浏览器中按Ctrl+F5强制刷新页面，清除缓存后查看效果${NC}"
+echo -e "${BLUE}================================================${NC}"

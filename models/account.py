@@ -51,7 +51,7 @@ class Account(object):
             total_shares = db.Column(db.Integer, default=0)
             total_favorites = db.Column(db.Integer, default=0)
             region = db.Column(db.String(50), default='未知')
-            account_type = db.Column(db.String(20), default='普通账号')  # 小账号/中账号/大账号/VIP账号
+            account_type = db.Column(db.String(20), default='白号')  # 白号/满月白号/橱窗号/报白号/机刷号/自然流号
             generation_type = db.Column(db.String(20), default='普通')  # 辈分数据：普通/一代/二代/三代
             
             def to_dict(self):

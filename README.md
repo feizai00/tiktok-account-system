@@ -94,6 +94,7 @@ docker-compose up -d
 - [故障排除](troubleshooting.md)：常见问题和解决方案
 - [更新日志](CHANGELOG.md)：版本历史和功能变更记录
 - [进度报告](PROGRESS.md)：项目开发进度和计划
+- [修复脚本](fix_scripts.md)：系统问题修复脚本说明
 
 ## 项目结构
 

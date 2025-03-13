@@ -31,7 +31,8 @@ def migrate_database():
             "total_shares": "INTEGER DEFAULT 0",
             "total_favorites": "INTEGER DEFAULT 0",
             "region": "TEXT DEFAULT '未知'",
-            "account_type": "TEXT DEFAULT '普通账号'"
+            "account_type": "TEXT DEFAULT '白号'",
+            "generation_type": "TEXT DEFAULT '普通'"
         }
         
         # 添加缺少的字段
