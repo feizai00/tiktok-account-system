@@ -1224,6 +1224,171 @@ fix_menu() {
     esac
 }
 
+# UI按钮修复函数
+fix_ui_buttons() {
+    show_header
+    echo -e "${CYAN}修复UI按钮问题...${NC}"
+    
+    # 检查root权限
+    check_root || return
+    
+    # 修复UI按钮问题
+    if [ -f "$DEPLOY_DIR/templates/accounts.html" ]; then
+        # 备份原文件
+        cp "$DEPLOY_DIR/templates/accounts.html" "$BACKUP_DIR/accounts.html.bak"
+        
+        # 修改JavaScript引用路径
+        sed -i "s|<script src=\"/static/js/accounts.js\"></script>|<script src=\"{{ url_for('static', filename='js/accounts.js') }}\"></script>|g" "$DEPLOY_DIR/templates/accounts.html" || echo -e "${YELLOW}修改JavaScript引用路径失败${NC}"
+        
+        # 添加内联JavaScript确保按钮正常显示
+        if ! grep -q "确保按钮显示" "$DEPLOY_DIR/templates/accounts.html"; then
+            # 准备要插入的JavaScript代码
+            JS_CODE="<!-- 确保按钮显示和功能正常 -->
+<script>
+    document.addEventListener(\"DOMContentLoaded\", function() {
+        // 确保所有按钮可见
+        var actionButtons = document.querySelectorAll(\".action-btn\");
+        actionButtons.forEach(function(btn) {
+            btn.style.display = \"inline-block\";
+        });
+        
+        // 重新绑定按钮事件
+        var viewButtons = document.querySelectorAll(\".view-btn\");
+        viewButtons.forEach(function(btn) {
+            btn.addEventListener(\"click\", function() {
+                var accountId = this.getAttribute(\"data-id\");
+                window.location.href = \"/view_account/\" + accountId;
+            });
+        });
+        
+        var refreshButtons = document.querySelectorAll(\".refresh-btn\");
+        refreshButtons.forEach(function(btn) {
+            btn.addEventListener(\"click\", function() {
+                var accountId = this.getAttribute(\"data-id\");
+                window.location.href = \"/refresh_account/\" + accountId;
+            });
+        });
+        
+        var editButtons = document.querySelectorAll(\".edit-btn\");
+        editButtons.forEach(function(btn) {
+            btn.addEventListener(\"click\", function() {
+                var accountId = this.getAttribute(\"data-id\");
+                window.location.href = \"/edit_account/\" + accountId;
+            });
+        });
+        
+        var deleteButtons = document.querySelectorAll(\".delete-btn\");
+        deleteButtons.forEach(function(btn) {
+            btn.addEventListener(\"click\", function() {
+                var accountId = this.getAttribute(\"data-id\");
+                if(confirm(\"确定要删除这个账号吗?\")) {
+                    window.location.href = \"/delete_account/\" + accountId;
+                }
+            });
+        });
+    });
+</script>"
+
+            # 将JavaScript代码写入一个临时文件
+            echo "$JS_CODE" > "$DEPLOY_DIR/inline_script.js"
+            
+            # 使用Python脚本来插入JavaScript
+            python3 -c '
+import sys
+with open("'"$DEPLOY_DIR/templates/accounts.html"'", "r") as f:
+    content = f.read()
+with open("'"$DEPLOY_DIR/inline_script.js"'", "r") as f:
+    js_code = f.read()
+modified_content = content.replace("</body>", js_code + "\n</body>")
+with open("'"$DEPLOY_DIR/templates/accounts.html"'", "w") as f:
+    f.write(modified_content)
+' || echo -e "${YELLOW}添加内联JavaScript失败${NC}"
+            
+            # 清理临时文件
+            rm -f "$DEPLOY_DIR/inline_script.js"
+        fi
+        
+        echo -e "${GREEN}UI按钮修复完成!${NC}"
+    else
+        echo -e "${RED}未找到accounts.html文件${NC}"
+    fi
+    
+    read -p "按Enter键返回..." key
+    fix_menu
+}
+
+# 修复Nginx配置
+fix_nginx() {
+    show_header
+    echo -e "${CYAN}修复Nginx配置...${NC}"
+    # TODO: 实现Nginx配置修复功能
+    echo -e "${YELLOW}功能待实现${NC}"
+    read -p "按Enter键返回..." key
+    fix_menu
+}
+
+# 修复服务器问题
+fix_server() {
+    show_header
+    echo -e "${CYAN}修复服务器问题...${NC}"
+    # TODO: 实现服务器问题修复功能
+    echo -e "${YELLOW}功能待实现${NC}"
+    read -p "按Enter键返回..." key
+    fix_menu
+}
+
+# 修复数据库连接
+fix_database() {
+    show_header
+    echo -e "${CYAN}修复数据库连接...${NC}"
+    # TODO: 实现数据库连接修复功能
+    echo -e "${YELLOW}功能待实现${NC}"
+    read -p "按Enter键返回..." key
+    fix_menu
+}
+
+# 修复权限问题
+fix_permissions() {
+    show_header
+    echo -e "${CYAN}修复文件权限...${NC}"
+    
+    # 检查root权限
+    check_root || return
+    
+    # 修复权限
+    chown -R www-data:www-data "$DEPLOY_DIR" 2>/dev/null || echo -e "${YELLOW}权限设置跳过，需要root权限${NC}"
+    chmod -R 755 "$DEPLOY_DIR" 2>/dev/null || echo -e "${YELLOW}权限设置跳过，需要root权限${NC}"
+    
+    echo -e "${GREEN}权限修复完成!${NC}"
+    read -p "按Enter键返回..." key
+    fix_menu
+}
+
+# 修复静态文件
+fix_static_files() {
+    show_header
+    echo -e "${CYAN}修复静态文件...${NC}"
+    # TODO: 实现静态文件修复功能
+    echo -e "${YELLOW}功能待实现${NC}"
+    read -p "按Enter键返回..." key
+    fix_menu
+}
+
+# 直接修复
+direct_fix() {
+    deploy_fixes
+}
+
+# 紧急修复
+emergency_fix() {
+    show_header
+    echo -e "${CYAN}执行紧急修复...${NC}"
+    # TODO: 实现紧急修复功能
+    echo -e "${YELLOW}功能待实现${NC}"
+    read -p "按Enter键返回..." key
+    fix_menu
+}
+
 # GitHub菜单
 github_menu() {
     show_header
