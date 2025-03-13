@@ -324,56 +324,61 @@ deploy_fixes() {
         cp "$DEPLOY_DIR/templates/accounts.html" "$BACKUP_DIR/accounts.html.bak"
         
         # 修改JavaScript引用路径
-        sed -i 's|<script src="/static/js/accounts.js"></script>|<script src="{{ url_for(\'static\', filename=\'js/accounts.js\') }}"></script>|g' "$DEPLOY_DIR/templates/accounts.html" || echo -e "${YELLOW}修改JavaScript引用路径失败${NC}"
+        sed -i "s|<script src=\"/static/js/accounts.js\"></script>|<script src=\"{{ url_for('static', filename='js/accounts.js') }}\"></script>|g" "$DEPLOY_DIR/templates/accounts.html" || echo -e "${YELLOW}修改JavaScript引用路径失败${NC}"
         
         # 添加内联JavaScript确保按钮正常显示
         if ! grep -q "确保按钮显示" "$DEPLOY_DIR/templates/accounts.html"; then
-            sed -i '/<\/body>/i \
-    <!-- 确保按钮显示和功能正常 --> \
-    <script> \
-        document.addEventListener("DOMContentLoaded", function() { \
-            // 确保所有按钮可见 \
-            var actionButtons = document.querySelectorAll(".action-btn"); \
-            actionButtons.forEach(function(btn) { \
-                btn.style.display = "inline-block"; \
-            }); \
-            \
-            // 重新绑定按钮事件 \
-            var viewButtons = document.querySelectorAll(".view-btn"); \
-            viewButtons.forEach(function(btn) { \
-                btn.addEventListener("click", function() { \
-                    var accountId = this.getAttribute("data-id"); \
-                    window.location.href = "/view_account/" + accountId; \
-                }); \
-            }); \
-            \
-            var refreshButtons = document.querySelectorAll(".refresh-btn"); \
-            refreshButtons.forEach(function(btn) { \
-                btn.addEventListener("click", function() { \
-                    var accountId = this.getAttribute("data-id"); \
-                    window.location.href = "/refresh_account/" + accountId; \
-                }); \
-            }); \
-            \
-            var editButtons = document.querySelectorAll(".edit-btn"); \
-            editButtons.forEach(function(btn) { \
-                btn.addEventListener("click", function() { \
-                    var accountId = this.getAttribute("data-id"); \
-                    window.location.href = "/edit_account/" + accountId; \
-                }); \
-            }); \
-            \
-            var deleteButtons = document.querySelectorAll(".delete-btn"); \
-            deleteButtons.forEach(function(btn) { \
-                btn.addEventListener("click", function() { \
-                    var accountId = this.getAttribute("data-id"); \
-                    if(confirm("确定要删除这个账号吗?")) { \
-                        window.location.href = "/delete_account/" + accountId; \
-                    } \
-                }); \
-            }); \
-        }); \
-    </script>' "$DEPLOY_DIR/templates/accounts.html" || echo -e "${YELLOW}添加内联JavaScript失败${NC}"
+            cat > "$DEPLOY_DIR/temp_script.js" << 'EOL'
+<!-- 确保按钮显示和功能正常 -->
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // 确保所有按钮可见
+        var actionButtons = document.querySelectorAll(".action-btn");
+        actionButtons.forEach(function(btn) {
+            btn.style.display = "inline-block";
+        });
+        
+        // 重新绑定按钮事件
+        var viewButtons = document.querySelectorAll(".view-btn");
+        viewButtons.forEach(function(btn) {
+            btn.addEventListener("click", function() {
+                var accountId = this.getAttribute("data-id");
+                window.location.href = "/view_account/" + accountId;
+            });
+        });
+        
+        var refreshButtons = document.querySelectorAll(".refresh-btn");
+        refreshButtons.forEach(function(btn) {
+            btn.addEventListener("click", function() {
+                var accountId = this.getAttribute("data-id");
+                window.location.href = "/refresh_account/" + accountId;
+            });
+        });
+        
+        var editButtons = document.querySelectorAll(".edit-btn");
+        editButtons.forEach(function(btn) {
+            btn.addEventListener("click", function() {
+                var accountId = this.getAttribute("data-id");
+                window.location.href = "/edit_account/" + accountId;
+            });
+        });
+        
+        var deleteButtons = document.querySelectorAll(".delete-btn");
+        deleteButtons.forEach(function(btn) {
+            btn.addEventListener("click", function() {
+                var accountId = this.getAttribute("data-id");
+                if(confirm("确定要删除这个账号吗?")) {
+                    window.location.href = "/delete_account/" + accountId;
+                }
+            });
+        });
+    });
+</script>
+EOL
+            # 使用更可靠的方式插入脚本
+            sed -i "/<\/body>/i $(cat "$DEPLOY_DIR/temp_script.js" | sed 's/\//\\\//g')" "$DEPLOY_DIR/templates/accounts.html" || echo -e "${YELLOW}添加内联JavaScript失败${NC}"
+            rm "$DEPLOY_DIR/temp_script.js"
+
         fi
     fi
     
