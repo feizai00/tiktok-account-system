@@ -12,7 +12,7 @@ NC='\033[0m' # 恢复默认颜色
 # 配置变量
 GITHUB_REPO="https://github.com/feizai00/tiktok-account-system.git"
 DEPLOY_DIR="/opt/tiktok-account-system"
-APP_PORT=5000
+APP_PORT=5001
 
 # 显示欢迎信息
 echo -e "${BLUE}================================================${NC}"
@@ -109,7 +109,7 @@ directory=$DEPLOY_DIR
 command=$DEPLOY_DIR/venv/bin/python app.py
 autostart=true
 autorestart=true
-environment=FLASK_APP=app.py,FLASK_ENV=production
+environment=FLASK_APP=app.py,FLASK_ENV=production,PORT=$APP_PORT
 user=root
 stderr_logfile=/var/log/tiktok_account_system/error.log
 stdout_logfile=/var/log/tiktok_account_system/access.log
@@ -194,6 +194,98 @@ elif [[ "$OS" == *"CentOS"* ]] || [[ "$OS" == *"Red Hat"* ]] || [[ "$OS" == *"Fe
         echo -e "${YELLOW}已配置firewalld防火墙规则${NC}"
     fi
 fi
+
+# 执行Nginx修复脚本
+echo -e "${YELLOW}正在执行Nginx修复脚本...${NC}"
+
+# 创建Nginx修复脚本
+cat > $DEPLOY_DIR/fix_nginx.sh << 'EOF'
+#!/bin/bash
+# TikTok账号管理系统 - Nginx修复脚本
+
+# 颜色定义
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # 恢复默认颜色
+
+echo -e "${BLUE}================================================${NC}"
+echo -e "${BLUE}    TikTok账号管理系统 - Nginx修复脚本    ${NC}"
+echo -e "${BLUE}================================================${NC}"
+
+# 设置应用目录
+APP_DIR="/opt/tiktok-account-system"
+NGINX_CONF="/etc/nginx/sites-available/tiktok_account_system"
+NGINX_ENABLED="/etc/nginx/sites-enabled/tiktok_account_system"
+DEFAULT_SITE="/etc/nginx/sites-enabled/default"
+
+echo -e "${YELLOW}步骤1: 备份当前Nginx配置${NC}"
+if [ -f "$NGINX_CONF" ]; then
+    cp "$NGINX_CONF" "${NGINX_CONF}.bak.$(date +%Y%m%d%H%M%S)"
+    echo -e "${GREEN}已备份当前配置到 ${NGINX_CONF}.bak.$(date +%Y%m%d%H%M%S)${NC}"
+fi
+
+echo -e "${YELLOW}步骤2: 创建新的Nginx配置${NC}"
+cat > "$NGINX_CONF" << EOL
+server {
+    listen 80;
+    server_name _;
+
+    access_log /var/log/nginx/tiktok_access.log;
+    error_log /var/log/nginx/tiktok_error.log;
+
+    location / {
+        proxy_pass http://127.0.0.1:5001;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_connect_timeout 300s;
+        proxy_read_timeout 300s;
+    }
+
+    location /static {
+        alias $APP_DIR/static;
+        expires 30d;
+        add_header Cache-Control "public, max-age=2592000";
+    }
+}
+EOL
+
+echo -e "${YELLOW}步骤3: 启用配置并禁用默认站点${NC}"
+# 确保链接存在
+ln -sf "$NGINX_CONF" "$NGINX_ENABLED"
+
+# 移除默认站点（如果存在）
+if [ -f "$DEFAULT_SITE" ]; then
+    rm -f "$DEFAULT_SITE"
+    echo -e "${GREEN}已禁用默认站点${NC}"
+fi
+
+echo -e "${YELLOW}步骤4: 检查Nginx配置语法${NC}"
+nginx -t
+if [ $? -ne 0 ]; then
+    echo -e "${RED}Nginx配置有语法错误，请修复后再重启Nginx${NC}"
+    exit 1
+fi
+
+echo -e "${YELLOW}步骤5: 重启Nginx${NC}"
+systemctl restart nginx
+if [ $? -ne 0 ]; then
+    echo -e "${RED}Nginx重启失败，请检查错误日志${NC}"
+    echo -e "${YELLOW}查看Nginx错误日志: sudo journalctl -u nginx${NC}"
+    exit 1
+fi
+
+echo -e "${GREEN}Nginx配置修复完成!${NC}"
+EOF
+
+# 设置执行权限
+chmod +x $DEPLOY_DIR/fix_nginx.sh
+
+# 执行修复脚本
+$DEPLOY_DIR/fix_nginx.sh
 
 # 显示安装成功信息
 echo -e "${GREEN}================================================${NC}"
