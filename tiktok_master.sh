@@ -142,6 +142,303 @@ deployment_menu() {
     esac
 }
 
+# 标准部署
+standard_deploy() {
+    show_header
+    echo -e "${CYAN}执行标准部署...${NC}"
+    
+    # 检查root权限
+    check_root || return
+    
+    # 创建备份目录
+    mkdir -p "$BACKUP_DIR"
+    
+    echo -e "${YELLOW}开始部署应用到 $DEPLOY_DIR${NC}"
+    
+    # 备份当前部署
+    if [ -d "$DEPLOY_DIR" ]; then
+        echo -e "${YELLOW}备份当前部署...${NC}"
+        cp -r "$DEPLOY_DIR" "$BACKUP_DIR/deploy_backup"
+    fi
+    
+    # 创建部署目录
+    mkdir -p "$DEPLOY_DIR"
+    
+    # 复制应用文件
+    echo -e "${YELLOW}复制应用文件...${NC}"
+    cp -r "$LOCAL_DIR"/* "$DEPLOY_DIR/"
+    
+    # 设置权限
+    echo -e "${YELLOW}设置权限...${NC}"
+    chown -R www-data:www-data "$DEPLOY_DIR" 2>/dev/null || echo -e "${YELLOW}权限设置跳过，需要root权限${NC}"
+    chmod -R 755 "$DEPLOY_DIR" 2>/dev/null || echo -e "${YELLOW}权限设置跳过，需要root权限${NC}"
+    
+    echo -e "${GREEN}标准部署完成!${NC}"
+    echo -e "${YELLOW}应用已部署到: $DEPLOY_DIR${NC}"
+    
+    read -p "按Enter键返回..." key
+    deployment_menu
+}
+
+# 自动部署
+auto_deploy() {
+    show_header
+    echo -e "${CYAN}执行自动部署...${NC}"
+    
+    # 检查root权限
+    check_root || return
+    
+    # 创建备份目录
+    mkdir -p "$BACKUP_DIR"
+    
+    echo -e "${YELLOW}开始自动部署流程...${NC}"
+    
+    # 备份当前部署
+    if [ -d "$DEPLOY_DIR" ]; then
+        echo -e "${YELLOW}备份当前部署...${NC}"
+        cp -r "$DEPLOY_DIR" "$BACKUP_DIR/deploy_backup"
+    fi
+    
+    # 从GitHub克隆最新代码
+    echo -e "${YELLOW}从GitHub克隆最新代码...${NC}"
+    if [ -d "$LOCAL_DIR/temp_git" ]; then
+        rm -rf "$LOCAL_DIR/temp_git"
+    fi
+    
+    mkdir -p "$LOCAL_DIR/temp_git"
+    git clone "$GITHUB_REPO" "$LOCAL_DIR/temp_git" || {
+        echo -e "${RED}克隆仓库失败${NC}"
+        read -p "按Enter键返回..." key
+        deployment_menu
+        return
+    }
+    
+    # 复制到部署目录
+    echo -e "${YELLOW}复制到部署目录...${NC}"
+    mkdir -p "$DEPLOY_DIR"
+    cp -r "$LOCAL_DIR/temp_git"/* "$DEPLOY_DIR/"
+    
+    # 设置权限
+    echo -e "${YELLOW}设置权限...${NC}"
+    chown -R www-data:www-data "$DEPLOY_DIR" 2>/dev/null || echo -e "${YELLOW}权限设置跳过，需要root权限${NC}"
+    chmod -R 755 "$DEPLOY_DIR" 2>/dev/null || echo -e "${YELLOW}权限设置跳过，需要root权限${NC}"
+    
+    # 清理临时目录
+    rm -rf "$LOCAL_DIR/temp_git"
+    
+    echo -e "${GREEN}自动部署完成!${NC}"
+    echo -e "${YELLOW}应用已部署到: $DEPLOY_DIR${NC}"
+    
+    read -p "按Enter键返回..." key
+    deployment_menu
+}
+
+# Docker部署
+docker_deploy() {
+    show_header
+    echo -e "${CYAN}执行Docker部署...${NC}"
+    
+    # 检查Docker是否安装
+    if ! command -v docker &> /dev/null; then
+        echo -e "${RED}错误: Docker未安装${NC}"
+        echo -e "${YELLOW}请先安装Docker${NC}"
+        read -p "按Enter键返回..." key
+        deployment_menu
+        return
+    fi
+    
+    # 创建备份目录
+    mkdir -p "$BACKUP_DIR"
+    
+    echo -e "${YELLOW}开始Docker部署流程...${NC}"
+    
+    # 创建Dockerfile
+    echo -e "${YELLOW}创建Dockerfile...${NC}"
+    cat > "$LOCAL_DIR/Dockerfile" << EOF
+FROM python:3.9-slim
+
+WORKDIR /app
+
+COPY . /app/
+
+RUN pip install --no-cache-dir -r requirements.txt
+
+EXPOSE $APP_PORT
+
+CMD ["python", "app.py"]
+EOF
+    
+    # 构建Docker镜像
+    echo -e "${YELLOW}构建Docker镜像...${NC}"
+    docker build -t $APP_NAME:latest "$LOCAL_DIR" || {
+        echo -e "${RED}构建Docker镜像失败${NC}"
+        read -p "按Enter键返回..." key
+        deployment_menu
+        return
+    }
+    
+    # 停止并删除旧容器
+    if docker ps -a | grep -q $APP_NAME; then
+        echo -e "${YELLOW}停止并删除旧容器...${NC}"
+        docker stop $APP_NAME
+        docker rm $APP_NAME
+    fi
+    
+    # 运行新容器
+    echo -e "${YELLOW}运行新容器...${NC}"
+    docker run -d --name $APP_NAME -p $APP_PORT:$APP_PORT $APP_NAME:latest || {
+        echo -e "${RED}运行Docker容器失败${NC}"
+        read -p "按Enter键返回..." key
+        deployment_menu
+        return
+    }
+    
+    echo -e "${GREEN}Docker部署完成!${NC}"
+    echo -e "${YELLOW}容器名称: $APP_NAME${NC}"
+    echo -e "${YELLOW}端口映射: $APP_PORT:$APP_PORT${NC}"
+    echo -e "${YELLOW}查看容器日志: docker logs $APP_NAME${NC}"
+    
+    read -p "按Enter键返回..." key
+    deployment_menu
+}
+
+# 部署修复
+deploy_fixes() {
+    show_header
+    echo -e "${CYAN}执行部署修复...${NC}"
+    
+    # 检查root权限
+    check_root || return
+    
+    echo -e "${YELLOW}开始修复部署问题...${NC}"
+    
+    # 修复权限
+    echo -e "${YELLOW}修复文件权限...${NC}"
+    chown -R www-data:www-data "$DEPLOY_DIR" 2>/dev/null || echo -e "${YELLOW}权限设置跳过，需要root权限${NC}"
+    chmod -R 755 "$DEPLOY_DIR" 2>/dev/null || echo -e "${YELLOW}权限设置跳过，需要root权限${NC}"
+    
+    # 修复UI按钮问题
+    echo -e "${YELLOW}修复UI按钮问题...${NC}"
+    if [ -f "$DEPLOY_DIR/templates/accounts.html" ]; then
+        # 备份原文件
+        cp "$DEPLOY_DIR/templates/accounts.html" "$BACKUP_DIR/accounts.html.bak"
+        
+        # 修改JavaScript引用路径
+        sed -i 's|<script src="/static/js/accounts.js"></script>|<script src="{{ url_for(\'static\', filename=\'js/accounts.js\') }}"></script>|g' "$DEPLOY_DIR/templates/accounts.html" || echo -e "${YELLOW}修改JavaScript引用路径失败${NC}"
+        
+        # 添加内联JavaScript确保按钮正常显示
+        if ! grep -q "确保按钮显示" "$DEPLOY_DIR/templates/accounts.html"; then
+            sed -i '/<\/body>/i \
+    <!-- 确保按钮显示和功能正常 --> \
+    <script> \
+        document.addEventListener("DOMContentLoaded", function() { \
+            // 确保所有按钮可见 \
+            var actionButtons = document.querySelectorAll(".action-btn"); \
+            actionButtons.forEach(function(btn) { \
+                btn.style.display = "inline-block"; \
+            }); \
+            \
+            // 重新绑定按钮事件 \
+            var viewButtons = document.querySelectorAll(".view-btn"); \
+            viewButtons.forEach(function(btn) { \
+                btn.addEventListener("click", function() { \
+                    var accountId = this.getAttribute("data-id"); \
+                    window.location.href = "/view_account/" + accountId; \
+                }); \
+            }); \
+            \
+            var refreshButtons = document.querySelectorAll(".refresh-btn"); \
+            refreshButtons.forEach(function(btn) { \
+                btn.addEventListener("click", function() { \
+                    var accountId = this.getAttribute("data-id"); \
+                    window.location.href = "/refresh_account/" + accountId; \
+                }); \
+            }); \
+            \
+            var editButtons = document.querySelectorAll(".edit-btn"); \
+            editButtons.forEach(function(btn) { \
+                btn.addEventListener("click", function() { \
+                    var accountId = this.getAttribute("data-id"); \
+                    window.location.href = "/edit_account/" + accountId; \
+                }); \
+            }); \
+            \
+            var deleteButtons = document.querySelectorAll(".delete-btn"); \
+            deleteButtons.forEach(function(btn) { \
+                btn.addEventListener("click", function() { \
+                    var accountId = this.getAttribute("data-id"); \
+                    if(confirm("确定要删除这个账号吗?")) { \
+                        window.location.href = "/delete_account/" + accountId; \
+                    } \
+                }); \
+            }); \
+        }); \
+    </script>' "$DEPLOY_DIR/templates/accounts.html" || echo -e "${YELLOW}添加内联JavaScript失败${NC}"
+        fi
+    fi
+    
+    echo -e "${GREEN}部署修复完成!${NC}"
+    
+    read -p "按Enter键返回..." key
+    deployment_menu
+}
+
+# 更新已部署系统
+update_deployed_system() {
+    show_header
+    echo -e "${CYAN}更新已部署系统...${NC}"
+    
+    # 检查root权限
+    check_root || return
+    
+    # 创建备份目录
+    mkdir -p "$BACKUP_DIR"
+    
+    echo -e "${YELLOW}开始更新已部署系统...${NC}"
+    
+    # 备份当前部署
+    if [ -d "$DEPLOY_DIR" ]; then
+        echo -e "${YELLOW}备份当前部署...${NC}"
+        cp -r "$DEPLOY_DIR" "$BACKUP_DIR/deploy_backup"
+    else
+        echo -e "${RED}错误: 部署目录不存在${NC}"
+        read -p "按Enter键返回..." key
+        deployment_menu
+        return
+    fi
+    
+    # 从GitHub获取最新代码
+    echo -e "${YELLOW}从GitHub获取最新代码...${NC}"
+    if [ -d "$LOCAL_DIR/temp_update" ]; then
+        rm -rf "$LOCAL_DIR/temp_update"
+    fi
+    
+    mkdir -p "$LOCAL_DIR/temp_update"
+    git clone "$GITHUB_REPO" "$LOCAL_DIR/temp_update" || {
+        echo -e "${RED}克隆仓库失败${NC}"
+        read -p "按Enter键返回..." key
+        deployment_menu
+        return
+    }
+    
+    # 更新部署目录
+    echo -e "${YELLOW}更新部署目录...${NC}"
+    cp -r "$LOCAL_DIR/temp_update"/* "$DEPLOY_DIR/"
+    
+    # 设置权限
+    echo -e "${YELLOW}设置权限...${NC}"
+    chown -R www-data:www-data "$DEPLOY_DIR" 2>/dev/null || echo -e "${YELLOW}权限设置跳过，需要root权限${NC}"
+    chmod -R 755 "$DEPLOY_DIR" 2>/dev/null || echo -e "${YELLOW}权限设置跳过，需要root权限${NC}"
+    
+    # 清理临时目录
+    rm -rf "$LOCAL_DIR/temp_update"
+    
+    echo -e "${GREEN}系统更新完成!${NC}"
+    
+    read -p "按Enter键返回..." key
+    deployment_menu
+}
+
 # 备份菜单
 backup_menu() {
     show_header
@@ -172,6 +469,632 @@ backup_menu() {
             backup_menu
             ;;
     esac
+}
+
+# 完整系统备份
+backup_full_system() {
+    show_header
+    echo -e "${CYAN}执行完整系统备份...${NC}"
+    
+    # 创建备份目录
+    FULL_BACKUP_DIR="$BACKUP_DIR/full_backup"
+    mkdir -p "$FULL_BACKUP_DIR"
+    
+    echo -e "${YELLOW}开始备份整个系统...${NC}"
+    
+    # 备份应用文件
+    echo -e "${YELLOW}备份应用文件...${NC}"
+    cp -r "$LOCAL_DIR"/* "$FULL_BACKUP_DIR/" || {
+        echo -e "${RED}备份应用文件失败${NC}"
+        read -p "按Enter键返回..." key
+        backup_menu
+        return
+    }
+    
+    # 备份数据库
+    echo -e "${YELLOW}备份数据库...${NC}"
+    if [ -f "$LOCAL_DIR/instance/tiktok.db" ]; then
+        mkdir -p "$FULL_BACKUP_DIR/instance"
+        cp "$LOCAL_DIR/instance/tiktok.db" "$FULL_BACKUP_DIR/instance/" || {
+            echo -e "${RED}备份数据库失败${NC}"
+        }
+    fi
+    
+    # 备份配置文件
+    echo -e "${YELLOW}备份配置文件...${NC}"
+    if [ -d "$LOCAL_DIR/config" ]; then
+        mkdir -p "$FULL_BACKUP_DIR/config"
+        cp -r "$LOCAL_DIR/config"/* "$FULL_BACKUP_DIR/config/" || {
+            echo -e "${RED}备份配置文件失败${NC}"
+        }
+    fi
+    
+    # 创建备份信息文件
+    echo -e "${YELLOW}创建备份信息文件...${NC}"
+    cat > "$FULL_BACKUP_DIR/backup_info.txt" << EOF
+备份类型: 完整系统备份
+备份时间: $(date +"%Y-%m-%d %H:%M:%S")
+备份版本: $VERSION
+备份目录: $FULL_BACKUP_DIR
+EOF
+    
+    echo -e "${GREEN}完整系统备份完成!${NC}"
+    echo -e "${YELLOW}备份保存在: $FULL_BACKUP_DIR${NC}"
+    
+    read -p "按Enter键返回..." key
+    backup_menu
+}
+
+# 仅备份数据库
+backup_database() {
+    show_header
+    echo -e "${CYAN}备份数据库...${NC}"
+    
+    # 创建备份目录
+    DB_BACKUP_DIR="$BACKUP_DIR/db_backup"
+    mkdir -p "$DB_BACKUP_DIR"
+    
+    echo -e "${YELLOW}开始备份数据库...${NC}"
+    
+    # 备份 SQLite 数据库
+    if [ -f "$LOCAL_DIR/instance/tiktok.db" ]; then
+        mkdir -p "$DB_BACKUP_DIR/instance"
+        cp "$LOCAL_DIR/instance/tiktok.db" "$DB_BACKUP_DIR/instance/tiktok.db" || {
+            echo -e "${RED}备份数据库失败${NC}"
+            read -p "按Enter键返回..." key
+            backup_menu
+            return
+        }
+        
+        echo -e "${GREEN}数据库备份完成!${NC}"
+        echo -e "${YELLOW}备份保存在: $DB_BACKUP_DIR/instance/tiktok.db${NC}"
+    else
+        echo -e "${RED}错误: 数据库文件不存在${NC}"
+    fi
+    
+    # 创建备份信息文件
+    cat > "$DB_BACKUP_DIR/backup_info.txt" << EOF
+备份类型: 数据库备份
+备份时间: $(date +"%Y-%m-%d %H:%M:%S")
+备份版本: $VERSION
+备份目录: $DB_BACKUP_DIR
+EOF
+    
+    read -p "按Enter键返回..." key
+    backup_menu
+}
+
+# 仅备份配置文件
+backup_config() {
+    show_header
+    echo -e "${CYAN}备份配置文件...${NC}"
+    
+    # 创建备份目录
+    CONFIG_BACKUP_DIR="$BACKUP_DIR/config_backup"
+    mkdir -p "$CONFIG_BACKUP_DIR"
+    
+    echo -e "${YELLOW}开始备份配置文件...${NC}"
+    
+    # 备份配置文件
+    if [ -d "$LOCAL_DIR/config" ]; then
+        mkdir -p "$CONFIG_BACKUP_DIR/config"
+        cp -r "$LOCAL_DIR/config"/* "$CONFIG_BACKUP_DIR/config/" || {
+            echo -e "${RED}备份配置文件失败${NC}"
+            read -p "按Enter键返回..." key
+            backup_menu
+            return
+        }
+        
+        echo -e "${GREEN}配置文件备份完成!${NC}"
+        echo -e "${YELLOW}备份保存在: $CONFIG_BACKUP_DIR/config${NC}"
+    else
+        echo -e "${YELLOW}未找到配置目录，尝试备份其他配置文件...${NC}"
+    fi
+    
+    # 备份 app.py 和 requirements.txt
+    if [ -f "$LOCAL_DIR/app.py" ]; then
+        cp "$LOCAL_DIR/app.py" "$CONFIG_BACKUP_DIR/" || echo -e "${RED}备份 app.py 失败${NC}"
+    fi
+    
+    if [ -f "$LOCAL_DIR/requirements.txt" ]; then
+        cp "$LOCAL_DIR/requirements.txt" "$CONFIG_BACKUP_DIR/" || echo -e "${RED}备份 requirements.txt 失败${NC}"
+    fi
+    
+    # 创建备份信息文件
+    cat > "$CONFIG_BACKUP_DIR/backup_info.txt" << EOF
+备份类型: 配置文件备份
+备份时间: $(date +"%Y-%m-%d %H:%M:%S")
+备份版本: $VERSION
+备份目录: $CONFIG_BACKUP_DIR
+EOF
+    
+    echo -e "${GREEN}配置文件备份完成!${NC}"
+    
+    read -p "按Enter键返回..." key
+    backup_menu
+}
+
+# 列出现有备份
+list_backups() {
+    show_header
+    echo -e "${CYAN}列出现有备份:${NC}"
+    
+    # 检查备份目录
+    if [ ! -d "$LOCAL_DIR/backups" ]; then
+        echo -e "${RED}未找到备份目录${NC}"
+        read -p "按Enter键返回..." key
+        backup_menu
+        return
+    fi
+    
+    # 列出备份目录
+    echo -e "${YELLOW}找到以下备份:${NC}"
+    
+    # 计数器
+    count=0
+    
+    # 遍历备份目录
+    for backup in "$LOCAL_DIR"/backups/*/; do
+        if [ -d "$backup" ]; then
+            backup_name=$(basename "$backup")
+            backup_date=$(echo "$backup_name" | grep -oE "[0-9]{8}_[0-9]{6}" || echo "Unknown")
+            
+            # 检查备份类型
+            backup_type="未知"
+            if [ -d "$backup/full_backup" ]; then
+                backup_type="完整系统备份"
+            elif [ -d "$backup/db_backup" ]; then
+                backup_type="数据库备份"
+            elif [ -d "$backup/config_backup" ]; then
+                backup_type="配置文件备份"
+            elif [ -d "$backup/deploy_backup" ]; then
+                backup_type="部署备份"
+            fi
+            
+            # 格式化日期
+            if [ "$backup_date" != "Unknown" ]; then
+                year=${backup_date:0:4}
+                month=${backup_date:4:2}
+                day=${backup_date:6:2}
+                hour=${backup_date:9:2}
+                minute=${backup_date:11:2}
+                second=${backup_date:13:2}
+                formatted_date="$year-$month-$day $hour:$minute:$second"
+            else
+                formatted_date="未知日期"
+            fi
+            
+            echo -e "${GREEN}$((++count)).${NC} [$backup_type] $formatted_date - $backup"
+        fi
+    done
+    
+    if [ $count -eq 0 ]; then
+        echo -e "${RED}没有找到备份${NC}"
+    fi
+    
+    read -p "按Enter键返回..." key
+    backup_menu
+}
+
+# 恢复备份
+restore_backup() {
+    show_header
+    echo -e "${CYAN}恢复备份:${NC}"
+    
+    # 检查备份目录
+    if [ ! -d "$LOCAL_DIR/backups" ]; then
+        echo -e "${RED}未找到备份目录${NC}"
+        read -p "按Enter键返回..." key
+        backup_menu
+        return
+    fi
+    
+    # 列出备份目录
+    echo -e "${YELLOW}可用备份:${NC}"
+    
+    # 存储备份路径的数组
+    declare -a backup_paths
+    
+    # 计数器
+    count=0
+    
+    # 遍历备份目录
+    for backup in "$LOCAL_DIR"/backups/*/; do
+        if [ -d "$backup" ]; then
+            backup_name=$(basename "$backup")
+            backup_date=$(echo "$backup_name" | grep -oE "[0-9]{8}_[0-9]{6}" || echo "Unknown")
+            
+            # 检查备份类型
+            backup_type="未知"
+            if [ -d "$backup/full_backup" ]; then
+                backup_type="完整系统备份"
+            elif [ -d "$backup/db_backup" ]; then
+                backup_type="数据库备份"
+            elif [ -d "$backup/config_backup" ]; then
+                backup_type="配置文件备份"
+            elif [ -d "$backup/deploy_backup" ]; then
+                backup_type="部署备份"
+            fi
+            
+            # 格式化日期
+            if [ "$backup_date" != "Unknown" ]; then
+                year=${backup_date:0:4}
+                month=${backup_date:4:2}
+                day=${backup_date:6:2}
+                hour=${backup_date:9:2}
+                minute=${backup_date:11:2}
+                second=${backup_date:13:2}
+                formatted_date="$year-$month-$day $hour:$minute:$second"
+            else
+                formatted_date="未知日期"
+            fi
+            
+            # 保存备份路径
+            backup_paths[$count]="$backup"
+            
+            echo -e "${GREEN}$((++count)).${NC} [$backup_type] $formatted_date - $backup_name"
+        fi
+    done
+    
+    if [ $count -eq 0 ]; then
+        echo -e "${RED}没有找到备份${NC}"
+        read -p "按Enter键返回..." key
+        backup_menu
+        return
+    fi
+    
+    echo -e "${YELLOW}0.${NC} 返回备份菜单"
+    echo ""
+    read -p "请选择要恢复的备份 [0-$count]: " choice
+    
+    # 验证输入
+    if [[ ! $choice =~ ^[0-9]+$ ]] || [ $choice -lt 0 ] || [ $choice -gt $count ]; then
+        echo -e "${RED}无效选项${NC}"
+        sleep 1
+        restore_backup
+        return
+    fi
+    
+    # 返回备份菜单
+    if [ $choice -eq 0 ]; then
+        backup_menu
+        return
+    fi
+    
+    # 获取选择的备份路径
+    selected_backup=${backup_paths[$((choice-1))]}
+    
+    # 确认恢复
+    echo -e "${YELLOW}警告: 恢复备份将覆盖当前系统。继续操作?${NC}"
+    read -p "确认恢复? (y/n): " confirm
+    
+    if [ "$confirm" != "y" ]; then
+        echo -e "${YELLOW}操作已取消${NC}"
+        sleep 1
+        restore_backup
+        return
+    fi
+    
+    # 确定备份类型并恢复
+    echo -e "${YELLOW}开始恢复备份...${NC}"
+    
+    # 创建当前系统的备份
+    echo -e "${YELLOW}创建当前系统的备份...${NC}"
+    current_backup_dir="$BACKUP_DIR/pre_restore_backup_$(date +%Y%m%d_%H%M%S)"
+    mkdir -p "$current_backup_dir"
+    
+    # 备份当前系统
+    if [ -d "$LOCAL_DIR" ]; then
+        cp -r "$LOCAL_DIR"/* "$current_backup_dir/" 2>/dev/null || echo -e "${YELLOW}部分文件无法备份${NC}"
+    fi
+    
+    # 检查备份类型并恢复
+    if [ -d "$selected_backup/full_backup" ]; then
+        echo -e "${YELLOW}恢复完整系统备份...${NC}"
+        
+        # 恢复应用文件
+        echo -e "${YELLOW}恢复应用文件...${NC}"
+        cp -r "$selected_backup/full_backup"/* "$LOCAL_DIR/" || {
+            echo -e "${RED}恢复应用文件失败${NC}"
+            read -p "按Enter键返回..." key
+            backup_menu
+            return
+        }
+        
+        echo -e "${GREEN}完整系统备份恢复成功!${NC}"
+    elif [ -d "$selected_backup/db_backup" ]; then
+        echo -e "${YELLOW}恢复数据库备份...${NC}"
+        
+        # 确保目标目录存在
+        mkdir -p "$LOCAL_DIR/instance"
+        
+        # 恢复数据库文件
+        if [ -f "$selected_backup/db_backup/instance/tiktok.db" ]; then
+            cp "$selected_backup/db_backup/instance/tiktok.db" "$LOCAL_DIR/instance/" || {
+                echo -e "${RED}恢复数据库失败${NC}"
+                read -p "按Enter键返回..." key
+                backup_menu
+                return
+            }
+            
+            echo -e "${GREEN}数据库备份恢复成功!${NC}"
+        else
+            echo -e "${RED}数据库备份文件不存在${NC}"
+            read -p "按Enter键返回..." key
+            backup_menu
+            return
+        fi
+    elif [ -d "$selected_backup/config_backup" ]; then
+        echo -e "${YELLOW}恢复配置文件备份...${NC}"
+        
+        # 恢复配置文件
+        if [ -d "$selected_backup/config_backup/config" ]; then
+            mkdir -p "$LOCAL_DIR/config"
+            cp -r "$selected_backup/config_backup/config"/* "$LOCAL_DIR/config/" || {
+                echo -e "${RED}恢复配置文件失败${NC}"
+                read -p "按Enter键返回..." key
+                backup_menu
+                return
+            }
+        fi
+        
+        # 恢复其他配置文件
+        if [ -f "$selected_backup/config_backup/app.py" ]; then
+            cp "$selected_backup/config_backup/app.py" "$LOCAL_DIR/" || echo -e "${RED}恢复 app.py 失败${NC}"
+        fi
+        
+        if [ -f "$selected_backup/config_backup/requirements.txt" ]; then
+            cp "$selected_backup/config_backup/requirements.txt" "$LOCAL_DIR/" || echo -e "${RED}恢复 requirements.txt 失败${NC}"
+        fi
+        
+        echo -e "${GREEN}配置文件备份恢复成功!${NC}"
+    elif [ -d "$selected_backup/deploy_backup" ]; then
+        echo -e "${YELLOW}恢复部署备份...${NC}"
+        
+        # 恢复部署文件
+        cp -r "$selected_backup/deploy_backup"/* "$DEPLOY_DIR/" || {
+            echo -e "${RED}恢复部署备份失败${NC}"
+            read -p "按Enter键返回..." key
+            backup_menu
+            return
+        }
+        
+        echo -e "${GREEN}部署备份恢复成功!${NC}"
+    else
+        echo -e "${RED}无法确定备份类型，恢复失败${NC}"
+        read -p "按Enter键返回..." key
+        backup_menu
+        return
+    fi
+    
+    # 设置权限
+    echo -e "${YELLOW}设置权限...${NC}"
+    chown -R www-data:www-data "$LOCAL_DIR" 2>/dev/null || echo -e "${YELLOW}权限设置跳过，需要root权限${NC}"
+    chmod -R 755 "$LOCAL_DIR" 2>/dev/null || echo -e "${YELLOW}权限设置跳过，需要root权限${NC}"
+    
+    echo -e "${GREEN}备份恢复完成!${NC}"
+    echo -e "${YELLOW}当前系统的备份已保存在: $current_backup_dir${NC}"
+    
+    read -p "按Enter键返回..." key
+    backup_menu
+}
+
+# 清理旧备份
+clean_old_backups() {
+    show_header
+    echo -e "${CYAN}清理旧备份:${NC}"
+    
+    # 检查备份目录
+    if [ ! -d "$LOCAL_DIR/backups" ]; then
+        echo -e "${RED}未找到备份目录${NC}"
+        read -p "按Enter键返回..." key
+        backup_menu
+        return
+    fi
+    
+    # 列出备份目录
+    echo -e "${YELLOW}当前备份:${NC}"
+    
+    # 存储备份路径的数组
+    declare -a backup_paths
+    declare -a backup_dates
+    
+    # 计数器
+    count=0
+    
+    # 遍历备份目录
+    for backup in "$LOCAL_DIR"/backups/*/; do
+        if [ -d "$backup" ]; then
+            backup_name=$(basename "$backup")
+            backup_date=$(echo "$backup_name" | grep -oE "[0-9]{8}_[0-9]{6}" || echo "Unknown")
+            
+            # 检查备份类型
+            backup_type="未知"
+            if [ -d "$backup/full_backup" ]; then
+                backup_type="完整系统备份"
+            elif [ -d "$backup/db_backup" ]; then
+                backup_type="数据库备份"
+            elif [ -d "$backup/config_backup" ]; then
+                backup_type="配置文件备份"
+            elif [ -d "$backup/deploy_backup" ]; then
+                backup_type="部署备份"
+            fi
+            
+            # 格式化日期
+            if [ "$backup_date" != "Unknown" ]; then
+                year=${backup_date:0:4}
+                month=${backup_date:4:2}
+                day=${backup_date:6:2}
+                hour=${backup_date:9:2}
+                minute=${backup_date:11:2}
+                second=${backup_date:13:2}
+                formatted_date="$year-$month-$day $hour:$minute:$second"
+            else
+                formatted_date="未知日期"
+            fi
+            
+            # 保存备份路径和日期
+            backup_paths[$count]="$backup"
+            backup_dates[$count]="$backup_date"
+            
+            echo -e "${GREEN}$((++count)).${NC} [$backup_type] $formatted_date - $backup_name"
+        fi
+    done
+    
+    if [ $count -eq 0 ]; then
+        echo -e "${RED}没有找到备份${NC}"
+        read -p "按Enter键返回..." key
+        backup_menu
+        return
+    fi
+    
+    echo -e "\n${YELLOW}清理选项:${NC}"
+    echo -e "1. 按时间清理（保留最近N个备份）"
+    echo -e "2. 手动选择要删除的备份"
+    echo -e "3. 删除所有备份"
+    echo -e "0. 返回备份菜单"
+    echo ""
+    read -p "请选择清理方式 [0-3]: " clean_choice
+    
+    case $clean_choice in
+        0)
+            backup_menu
+            return
+            ;;
+        1)
+            echo -e "\n${YELLOW}保留最近的备份数量:${NC}"
+            read -p "请输入要保留的最近备份数量: " keep_count
+            
+            # 验证输入
+            if [[ ! $keep_count =~ ^[0-9]+$ ]] || [ $keep_count -lt 1 ]; then
+                echo -e "${RED}无效输入，请输入大于0的数字${NC}"
+                sleep 1
+                clean_old_backups
+                return
+            fi
+            
+            # 如果要保留的数量大于等于现有备份数量，则不需要删除
+            if [ $keep_count -ge $count ]; then
+                echo -e "${YELLOW}当前备份数量($count)小于或等于要保留的数量($keep_count)，无需清理${NC}"
+                read -p "按Enter键返回..." key
+                clean_old_backups
+                return
+            fi
+            
+            # 按日期排序备份（从旧到新）
+            for ((i=0; i<$count; i++)); do
+                for ((j=i+1; j<$count; j++)); do
+                    if [ "${backup_dates[$i]}" \> "${backup_dates[$j]}" ]; then
+                        # 交换日期
+                        temp_date=${backup_dates[$i]}
+                        backup_dates[$i]=${backup_dates[$j]}
+                        backup_dates[$j]=$temp_date
+                        
+                        # 交换路径
+                        temp_path=${backup_paths[$i]}
+                        backup_paths[$i]=${backup_paths[$j]}
+                        backup_paths[$j]=$temp_path
+                    fi
+                done
+            done
+            
+            # 计算要删除的备份数量
+            delete_count=$((count - keep_count))
+            
+            echo -e "\n${YELLOW}将删除以下$delete_count个最旧的备份:${NC}"
+            for ((i=0; i<$delete_count; i++)); do
+                backup_name=$(basename "${backup_paths[$i]}")
+                echo -e "${RED}$(($i+1)).${NC} $backup_name"
+            done
+            
+            echo -e "\n${RED}警告: 此操作无法撤销!${NC}"
+            read -p "确认删除? (y/n): " confirm
+            
+            if [ "$confirm" != "y" ]; then
+                echo -e "${YELLOW}操作已取消${NC}"
+                sleep 1
+                clean_old_backups
+                return
+            fi
+            
+            # 删除旧备份
+            for ((i=0; i<$delete_count; i++)); do
+                echo -e "删除: ${RED}$(basename "${backup_paths[$i]}")${NC}"
+                rm -rf "${backup_paths[$i]}"
+            done
+            
+            echo -e "\n${GREEN}成功删除$delete_count个旧备份，保留了最近的$keep_count个备份${NC}"
+            ;;
+        2)
+            echo -e "\n${YELLOW}请输入要删除的备份编号（用空格分隔）:${NC}"
+            read -p "> " delete_numbers
+            
+            # 验证输入
+            valid_input=true
+            for num in $delete_numbers; do
+                if [[ ! $num =~ ^[0-9]+$ ]] || [ $num -lt 1 ] || [ $num -gt $count ]; then
+                    valid_input=false
+                    break
+                fi
+            done
+            
+            if [ "$valid_input" = false ]; then
+                echo -e "${RED}无效输入，请输入1到$count之间的数字${NC}"
+                sleep 1
+                clean_old_backups
+                return
+            fi
+            
+            echo -e "\n${YELLOW}将删除以下备份:${NC}"
+            for num in $delete_numbers; do
+                backup_name=$(basename "${backup_paths[$((num-1))]}") 
+                echo -e "${RED}$num.${NC} $backup_name"
+            done
+            
+            echo -e "\n${RED}警告: 此操作无法撤销!${NC}"
+            read -p "确认删除? (y/n): " confirm
+            
+            if [ "$confirm" != "y" ]; then
+                echo -e "${YELLOW}操作已取消${NC}"
+                sleep 1
+                clean_old_backups
+                return
+            fi
+            
+            # 删除选定的备份
+            for num in $delete_numbers; do
+                echo -e "删除: ${RED}$(basename "${backup_paths[$((num-1))]}")${NC}"
+                rm -rf "${backup_paths[$((num-1))]}"
+            done
+            
+            echo -e "\n${GREEN}成功删除选定的备份${NC}"
+            ;;
+        3)
+            echo -e "\n${RED}警告: 将删除所有备份!此操作无法撤销!${NC}"
+            read -p "确认删除所有备份? (y/n): " confirm
+            
+            if [ "$confirm" != "y" ]; then
+                echo -e "${YELLOW}操作已取消${NC}"
+                sleep 1
+                clean_old_backups
+                return
+            fi
+            
+            # 删除所有备份
+            echo -e "${YELLOW}删除所有备份...${NC}"
+            rm -rf "$LOCAL_DIR"/backups/*
+            
+            echo -e "\n${GREEN}成功删除所有备份${NC}"
+            ;;
+        *)
+            echo -e "${RED}无效选项${NC}"
+            sleep 1
+            clean_old_backups
+            ;;
+    esac
+    
+    read -p "按Enter键返回..." key
+    backup_menu
 }
 
 # 维护菜单
