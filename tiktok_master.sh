@@ -328,56 +328,74 @@ deploy_fixes() {
         
         # 添加内联JavaScript确保按钮正常显示
         if ! grep -q "确保按钮显示" "$DEPLOY_DIR/templates/accounts.html"; then
-            cat > "$DEPLOY_DIR/temp_script.js" << 'EOL'
-<!-- 确保按钮显示和功能正常 -->
+            # 创建一个完整的HTML文件作为备份
+            cp "$DEPLOY_DIR/templates/accounts.html" "$DEPLOY_DIR/templates/accounts.html.bak"
+            
+            # 准备要插入的JavaScript代码
+            JS_CODE="<!-- 确保按钮显示和功能正常 -->
 <script>
-    document.addEventListener("DOMContentLoaded", function() {
+    document.addEventListener(\"DOMContentLoaded\", function() {
         // 确保所有按钮可见
-        var actionButtons = document.querySelectorAll(".action-btn");
+        var actionButtons = document.querySelectorAll(\".action-btn\");
         actionButtons.forEach(function(btn) {
-            btn.style.display = "inline-block";
+            btn.style.display = \"inline-block\";
         });
         
         // 重新绑定按钮事件
-        var viewButtons = document.querySelectorAll(".view-btn");
+        var viewButtons = document.querySelectorAll(\".view-btn\");
         viewButtons.forEach(function(btn) {
-            btn.addEventListener("click", function() {
-                var accountId = this.getAttribute("data-id");
-                window.location.href = "/view_account/" + accountId;
+            btn.addEventListener(\"click\", function() {
+                var accountId = this.getAttribute(\"data-id\");
+                window.location.href = \"/view_account/\" + accountId;
             });
         });
         
-        var refreshButtons = document.querySelectorAll(".refresh-btn");
+        var refreshButtons = document.querySelectorAll(\".refresh-btn\");
         refreshButtons.forEach(function(btn) {
-            btn.addEventListener("click", function() {
-                var accountId = this.getAttribute("data-id");
-                window.location.href = "/refresh_account/" + accountId;
+            btn.addEventListener(\"click\", function() {
+                var accountId = this.getAttribute(\"data-id\");
+                window.location.href = \"/refresh_account/\" + accountId;
             });
         });
         
-        var editButtons = document.querySelectorAll(".edit-btn");
+        var editButtons = document.querySelectorAll(\".edit-btn\");
         editButtons.forEach(function(btn) {
-            btn.addEventListener("click", function() {
-                var accountId = this.getAttribute("data-id");
-                window.location.href = "/edit_account/" + accountId;
+            btn.addEventListener(\"click\", function() {
+                var accountId = this.getAttribute(\"data-id\");
+                window.location.href = \"/edit_account/\" + accountId;
             });
         });
         
-        var deleteButtons = document.querySelectorAll(".delete-btn");
+        var deleteButtons = document.querySelectorAll(\".delete-btn\");
         deleteButtons.forEach(function(btn) {
-            btn.addEventListener("click", function() {
-                var accountId = this.getAttribute("data-id");
-                if(confirm("确定要删除这个账号吗?")) {
-                    window.location.href = "/delete_account/" + accountId;
+            btn.addEventListener(\"click\", function() {
+                var accountId = this.getAttribute(\"data-id\");
+                if(confirm(\"确定要删除这个账号吗?\")) {
+                    window.location.href = \"/delete_account/\" + accountId;
                 }
             });
         });
     });
-</script>
-EOL
-            # 使用更可靠的方式插入脚本
-            sed -i "/<\/body>/i $(cat "$DEPLOY_DIR/temp_script.js" | sed 's/\//\\\//g')" "$DEPLOY_DIR/templates/accounts.html" || echo -e "${YELLOW}添加内联JavaScript失败${NC}"
-            rm "$DEPLOY_DIR/temp_script.js"
+</script>"
+            
+            # 使用更简单的方法插入JavaScript
+            # 将JavaScript代码写入一个临时文件
+            echo "$JS_CODE" > "$DEPLOY_DIR/inline_script.js"
+            
+            # 使用Python脚本来插入JavaScript，这比使用sed或awk更可靠
+            python3 -c '
+import sys
+with open("'"$DEPLOY_DIR/templates/accounts.html"'", "r") as f:
+    content = f.read()
+with open("'"$DEPLOY_DIR/inline_script.js"'", "r") as f:
+    js_code = f.read()
+modified_content = content.replace("</body>", js_code + "\n</body>")
+with open("'"$DEPLOY_DIR/templates/accounts.html"'", "w") as f:
+    f.write(modified_content)
+' || echo -e "${YELLOW}添加内联JavaScript失败${NC}"
+            
+            # 清理临时文件
+            rm -f "$DEPLOY_DIR/inline_script.js"
 
         fi
     fi
