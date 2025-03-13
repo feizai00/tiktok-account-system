@@ -292,5 +292,192 @@
 
     <!-- 引入外部JavaScript文件 -->
     <script src="{{ url_for('static', filename='js/accounts.js') }}"></script>
+    
+    <!-- 内联JavaScript确保按钮显示和工作 -->
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('确保按钮显示和工作');
+        
+        // 确保操作按钮可见
+        const actionButtons = document.querySelectorAll('.action-buttons');
+        actionButtons.forEach(function(buttonGroup) {
+            buttonGroup.style.display = 'flex';
+        });
+        
+        // 确保所有按钮可见
+        const allButtons = document.querySelectorAll('.action-btn');
+        allButtons.forEach(function(button) {
+            button.style.display = 'inline-block';
+        });
+        
+        // 重新绑定按钮事件
+        document.querySelectorAll('.view-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                const id = this.getAttribute('data-id');
+                fetch(`/api/accounts/${id}`)
+                    .then(response => response.json())
+                    .then(account => {
+                        document.getElementById('modalTitle').textContent = '查看账号';
+                        document.getElementById('accountId').value = id;
+                        
+                        // 填充表单字段
+                        if(document.getElementById('username')) document.getElementById('username').value = account.username || '';
+                        if(document.getElementById('password')) document.getElementById('password').value = account.password || '';
+                        if(document.getElementById('contact')) document.getElementById('contact').value = account.contact || '';
+                        if(document.getElementById('api_password')) document.getElementById('api_password').value = account.api_password || '';
+                        if(document.getElementById('register_date')) document.getElementById('register_date').value = account.register_date || '';
+                        if(document.getElementById('register_region')) document.getElementById('register_region').value = account.register_region || '';
+                        if(document.getElementById('has_showcase')) document.getElementById('has_showcase').value = account.has_showcase || '无';
+                        if(document.getElementById('account_type')) document.getElementById('account_type').value = account.account_type || '白号';
+                        if(document.getElementById('generation_type')) document.getElementById('generation_type').value = account.generation_type || '普通';
+                        if(document.getElementById('region')) document.getElementById('region').value = account.region || '未知';
+                        if(document.getElementById('followers')) document.getElementById('followers').value = account.followers || 0;
+                        if(document.getElementById('likes')) document.getElementById('likes').value = account.likes || 0;
+                        if(document.getElementById('price')) document.getElementById('price').value = account.price || 0;
+                        if(document.getElementById('status')) document.getElementById('status').value = account.status || '未售';
+                        
+                        // 设置所有字段为只读
+                        const formInputs = document.getElementById('accountForm').querySelectorAll('input, select');
+                        formInputs.forEach(input => {
+                            input.setAttribute('readonly', true);
+                            if (input.tagName === 'SELECT') {
+                                input.setAttribute('disabled', true);
+                            }
+                        });
+                        
+                        // 隐藏保存按钮，只显示取消按钮
+                        document.getElementById('saveBtn').style.display = 'none';
+                        
+                        // 显示模态框
+                        document.getElementById('accountModal').style.display = 'block';
+                    })
+                    .catch(error => {
+                        console.error('获取账号详情失败:', error);
+                        alert('获取账号详情失败，请重试');
+                    });
+            });
+        });
+        
+        document.querySelectorAll('.edit-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                const id = this.getAttribute('data-id');
+                fetch(`/api/accounts/${id}`)
+                    .then(response => response.json())
+                    .then(account => {
+                        document.getElementById('modalTitle').textContent = '编辑账号';
+                        document.getElementById('accountId').value = id;
+                        
+                        // 填充表单字段
+                        if(document.getElementById('username')) document.getElementById('username').value = account.username || '';
+                        if(document.getElementById('password')) document.getElementById('password').value = account.password || '';
+                        if(document.getElementById('contact')) document.getElementById('contact').value = account.contact || '';
+                        if(document.getElementById('api_password')) document.getElementById('api_password').value = account.api_password || '';
+                        if(document.getElementById('register_date')) document.getElementById('register_date').value = account.register_date || '';
+                        if(document.getElementById('register_region')) document.getElementById('register_region').value = account.register_region || '';
+                        if(document.getElementById('has_showcase')) document.getElementById('has_showcase').value = account.has_showcase || '无';
+                        if(document.getElementById('account_type')) document.getElementById('account_type').value = account.account_type || '白号';
+                        if(document.getElementById('generation_type')) document.getElementById('generation_type').value = account.generation_type || '普通';
+                        if(document.getElementById('region')) document.getElementById('region').value = account.region || '未知';
+                        if(document.getElementById('followers')) document.getElementById('followers').value = account.followers || 0;
+                        if(document.getElementById('likes')) document.getElementById('likes').value = account.likes || 0;
+                        if(document.getElementById('price')) document.getElementById('price').value = account.price || 0;
+                        if(document.getElementById('status')) document.getElementById('status').value = account.status || '未售';
+                        
+                        // 确保所有字段可编辑
+                        const formInputs = document.getElementById('accountForm').querySelectorAll('input, select');
+                        formInputs.forEach(input => {
+                            input.removeAttribute('readonly');
+                            if (input.tagName === 'SELECT') {
+                                input.removeAttribute('disabled');
+                            }
+                        });
+                        
+                        // 显示保存按钮
+                        document.getElementById('saveBtn').style.display = 'inline-block';
+                        
+                        // 显示模态框
+                        document.getElementById('accountModal').style.display = 'block';
+                    })
+                    .catch(error => {
+                        console.error('获取账号详情失败:', error);
+                        alert('获取账号详情失败，请重试');
+                    });
+            });
+        });
+        
+        document.querySelectorAll('.delete-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                const id = this.getAttribute('data-id');
+                document.getElementById('confirmDeleteBtn').setAttribute('data-id', id);
+                document.getElementById('deleteModal').style.display = 'block';
+            });
+        });
+        
+        // 确认删除按钮事件
+        document.getElementById('confirmDeleteBtn').addEventListener('click', function() {
+            const id = this.getAttribute('data-id');
+            fetch(`/api/accounts/${id}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if(data.success) {
+                    document.getElementById('deleteModal').style.display = 'none';
+                    // 刷新页面显示最新数据
+                    window.location.reload();
+                } else {
+                    alert('删除失败: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('删除账号失败:', error);
+                alert('删除账号失败，请重试');
+            });
+        });
+        
+        // 账号表单提交处理
+        document.getElementById('accountForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const id = document.getElementById('accountId').value;
+            const isUpdate = id ? true : false;
+            
+            // 构建表单数据
+            const formData = new FormData(this);
+            const data = {};
+            for (let [key, value] of formData.entries()) {
+                data[key] = value;
+            }
+            
+            // 添加账号ID（如果是更新操作）
+            if (isUpdate) {
+                data.id = id;
+            }
+            
+            // 发送请求
+            fetch(isUpdate ? `/api/accounts/${id}` : '/api/accounts', {
+                method: isUpdate ? 'PUT' : 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    // 关闭模态框
+                    document.getElementById('accountModal').style.display = 'none';
+                    // 刷新页面显示最新数据
+                    window.location.reload();
+                } else {
+                    alert('操作失败: ' + result.message);
+                }
+            })
+            .catch(error => {
+                console.error('保存账号失败:', error);
+                alert('保存账号失败，请重试');
+            });
+        });
+    });
+    </script>
 </body>
 </html>
